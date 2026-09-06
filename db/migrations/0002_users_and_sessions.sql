@@ -1,7 +1,8 @@
 -- Phase 01: accounts.
--- gen_random_uuid() is built into Postgres core since version 13 — no
--- extension needed (and Azure Postgres Flexible Server blocks pgcrypto
--- from being enabled by a normal user anyway).
+-- gen_random_uuid() is built into Postgres core since version 13, so no
+-- pgcrypto extension is needed. (Azure Postgres Flexible Server ships with
+-- an empty extension allow-list; pgcrypto could be allow-listed the same
+-- way btree_gist was in 0006, but there is no reason to.)
 
 create type user_role as enum ('admin', 'pilot');
 create type user_status as enum ('pending', 'approved', 'rejected');
