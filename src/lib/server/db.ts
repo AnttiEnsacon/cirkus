@@ -95,6 +95,41 @@ export interface FlightLogEntriesTable {
 	updated_at: ColumnType<Date, string | undefined, string>;
 }
 
+export type InvoiceStatus = 'issued' | 'paid' | 'cancelled';
+
+export interface InvoicesTable {
+	id: Generated<string>;
+	invoice_year: number;
+	invoice_seq: number;
+	invoice_number: ColumnType<string, never, never>;
+	pilot_id: string;
+	period_start: ColumnType<Date, string, string>;
+	period_end: ColumnType<Date, string, string>;
+	status: Generated<InvoiceStatus>;
+	subtotal: ColumnType<string, number | string | undefined, number | string>;
+	total_amount: ColumnType<string, number | string | undefined, number | string>;
+	currency: Generated<string>;
+	issued_at: ColumnType<Date, string | undefined, string>;
+	due_date: ColumnType<Date, string, string>;
+	paid_at: ColumnType<Date | null, string | null | undefined, string | null>;
+	paid_reference: string | null;
+	cancelled_at: ColumnType<Date | null, string | null | undefined, string | null>;
+	notes: string | null;
+	created_by: string;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export interface InvoiceLineItemsTable {
+	id: Generated<string>;
+	invoice_id: string;
+	flight_log_id: string;
+	aircraft_id: string;
+	hours_billed: ColumnType<string, number | string, number | string>;
+	rate_applied: ColumnType<string, number | string, number | string>;
+	amount: ColumnType<string, never, never>;
+	description: string | null;
+}
+
 // Table interfaces are added here as migrations introduce them.
 export interface Database {
 	schema_info: {
@@ -109,6 +144,8 @@ export interface Database {
 	airports: AirportsTable;
 	flight_types: FlightTypesTable;
 	flight_log_entries: FlightLogEntriesTable;
+	invoices: InvoicesTable;
+	invoice_line_items: InvoiceLineItemsTable;
 }
 
 const pool = new Pool({

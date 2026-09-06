@@ -11,9 +11,11 @@
 			<a href="/book">Book</a>
 			<a href="/log">Log</a>
 			<a href="/logbook">Logbook</a>
+			<a href="/invoices">Invoices</a>
 			{#if data.user.role === 'admin'}
 				<a href="/manage/approvals">Approvals</a>
 				<a href="/manage/flights">Flights</a>
+				<a href="/manage/invoices">Billing</a>
 				<a href="/manage/fleet">Fleet</a>
 				<a href="/manage/accounts">Accounts</a>
 			{/if}
@@ -62,5 +64,13 @@
 	}
 	.content {
 		padding: 1.5rem;
+	}
+	@media print {
+		header {
+			display: none;
+		}
+		.content {
+			padding: 0;
+		}
 	}
 </style>
