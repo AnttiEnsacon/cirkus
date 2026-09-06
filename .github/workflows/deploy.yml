@@ -52,12 +52,23 @@ jobs:
         uses: azure/CLI@v2
         with:
           inlineScript: |
+            # `az containerapp up` doesn't accept --secrets (still true as of
+            # az cli 2.89.1 / see Azure/azure-container-apps#340), so secrets
+            # and the env var that references one are wired up afterward.
             az containerapp up \
               --name ${{ env.CONTAINERAPP_NAME }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
               --environment ${{ env.CONTAINERAPPS_ENV }} \
               --image ${{ env.IMAGE }}:${{ github.sha }} \
               --target-port 3000 \
-              --ingress external \
-              --secrets database-url=${{ secrets.DATABASE_URL }} \
-              --env-vars DATABASE_URL=secretref:database-url
+              --ingress external
+
+            az containerapp secret set \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --secrets database-url=${{ secrets.DATABASE_URL }}
+
+            az containerapp update \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --set-env-vars DATABASE_URL=secretref:database-url
