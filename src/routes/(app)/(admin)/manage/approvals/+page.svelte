@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 </script>
@@ -7,63 +8,44 @@
 	<title>Approvals — Cirkus</title>
 </svelte:head>
 
-<h1>Pending approvals</h1>
+<div class="page">
+	<div class="page-head">
+		<div>
+			<p class="eyebrow">Admin</p>
+			<h1>Pending approvals</h1>
+		</div>
+	</div>
 
-{#if data.pending.length === 0}
-	<p>No accounts are waiting for approval.</p>
-{:else}
-	<table>
-		<thead>
-			<tr>
-				<th>Name</th>
-				<th>Email</th>
-				<th>Requested</th>
-				<th></th>
-			</tr>
-		</thead>
-		<tbody>
+	{#if data.pending.length === 0}
+		<div class="card"><p class="muted">No accounts are waiting for approval.</p></div>
+	{:else}
+		<div class="card tight">
 			{#each data.pending as person (person.id)}
-				<tr>
-					<td>{person.name}</td>
-					<td>{person.email}</td>
-					<td>{new Date(person.created_at).toLocaleDateString()}</td>
-					<td class="actions">
+				<div class="list-item">
+					<span class="list-icon"><Icon name="users" size={17} /></span>
+					<span class="list-main">
+						<span class="list-title">{person.name}</span>
+						<span class="list-sub">{person.email} · requested {new Date(person.created_at).toLocaleDateString('en-GB')}</span>
+					</span>
+					<span class="list-end">
 						<form method="POST" action="?/approve">
 							<input type="hidden" name="id" value={person.id} />
-							<button type="submit">Approve</button>
+							<button type="submit" class="btn btn-teal xs">Approve</button>
 						</form>
 						<form method="POST" action="?/reject">
 							<input type="hidden" name="id" value={person.id} />
-							<button type="submit" class="reject">Reject</button>
+							<button type="submit" class="btn btn-danger xs">Reject</button>
 						</form>
-					</td>
-				</tr>
+					</span>
+				</div>
 			{/each}
-		</tbody>
-	</table>
-{/if}
+		</div>
+	{/if}
+</div>
 
 <style>
-	table {
-		border-collapse: collapse;
-		width: 100%;
-		max-width: 40rem;
-	}
-	th,
-	td {
-		text-align: left;
-		padding: 0.5rem 0.75rem;
-		border-bottom: 1px solid #dddee0;
-	}
-	.actions {
+	.list-main {
 		display: flex;
-		gap: 0.5rem;
-	}
-	button {
-		cursor: pointer;
-		padding: 0.35rem 0.75rem;
-	}
-	.reject {
-		color: #b3261e;
+		flex-direction: column;
 	}
 </style>

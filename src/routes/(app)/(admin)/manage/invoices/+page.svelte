@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 </script>
@@ -7,165 +8,105 @@
 	<title>Billing — Cirkus</title>
 </svelte:head>
 
-<h1>Billing</h1>
-
-{#if form?.error}
-	<p class="error">{form.error}</p>
-{/if}
-{#if form?.created !== undefined}
-	<p class="notice">{form.created === 0 ? 'Nothing to bill.' : `${form.created} invoice${form.created === 1 ? '' : 's'} created.`}</p>
-{/if}
-
-<h2>Ready to invoice</h2>
-<p class="hint">Approved flights not yet on an invoice, at the current member rate.</p>
-{#if data.unbilled.length === 0}
-	<p>Nothing waiting — approve flights under <a href="/manage/flights">Flights</a> first.</p>
-{:else}
-	<table class="compact">
-		<thead>
-			<tr><th>Pilot</th><th>Flights</th><th>Hours</th><th>Amount (€)</th><th></th></tr>
-		</thead>
-		<tbody>
-			{#each data.unbilled as u (u.pilot_id)}
-				<tr>
-					<td>{u.pilot_name}</td>
-					<td class="num">{u.flights}</td>
-					<td class="num">{u.hours}</td>
-					<td class="num">{u.amount}</td>
-					<td>
-						<form method="POST" action="?/create">
-							<input type="hidden" name="pilot_id" value={u.pilot_id} />
-							<button type="submit">Create invoice</button>
-						</form>
-					</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
-	<form method="POST" action="?/createAll" class="all">
-		<button type="submit">Create all {data.unbilled.length} invoices</button>
-	</form>
-{/if}
-
-<h2>Invoices</h2>
-{#if data.invoices.length === 0}
-	<p>No invoices yet.</p>
-{:else}
-	<div class="table-wrap">
-		<table>
-			<thead>
-				<tr><th>Number</th><th>Pilot</th><th>Period</th><th>Issued</th><th>Due</th><th>Total (€)</th><th>Status</th><th>Paid</th><th></th></tr>
-			</thead>
-			<tbody>
-				{#each data.invoices as inv (inv.id)}
-					<tr>
-						<td class="mono"><a href="/invoices/{inv.id}">{inv.number}</a></td>
-						<td>{inv.pilot_name}</td>
-						<td class="mono">{inv.period}</td>
-						<td class="mono">{inv.issued}</td>
-						<td class="mono" class:overdue={inv.overdue}>{inv.due}{inv.overdue ? ' (overdue)' : ''}</td>
-						<td class="num">{inv.total}</td>
-						<td><span class="status {inv.status}">{inv.status}</span></td>
-						<td>{inv.paid}</td>
-						<td class="actions">
-							{#if inv.status === 'issued'}
-								<form method="POST" action="?/markPaid" class="pay">
-									<input type="hidden" name="id" value={inv.id} />
-									<input name="reference" placeholder="reference (optional)" />
-									<button type="submit">Mark paid</button>
-								</form>
-								<form method="POST" action="?/cancel">
-									<input type="hidden" name="id" value={inv.id} />
-									<button type="submit" class="danger">Cancel</button>
-								</form>
-							{/if}
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
+<div class="page">
+	<div class="page-head">
+		<div>
+			<p class="eyebrow">Admin</p>
+			<h1>Billing</h1>
+		</div>
 	</div>
-{/if}
+
+	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
+	{#if form?.created !== undefined}
+		<p class="alert notice">{form.created === 0 ? 'Nothing to bill.' : `${form.created} invoice${form.created === 1 ? '' : 's'} created.`}</p>
+	{/if}
+
+	<p class="section-label">Ready to invoice</p>
+	{#if data.unbilled.length === 0}
+		<div class="card"><p class="muted">Nothing waiting — approve flights under <a href="/manage/flights">Flights</a> first.</p></div>
+	{:else}
+		<div class="card stack">
+			<div class="tight-list">
+				{#each data.unbilled as u (u.pilot_id)}
+					<div class="list-item">
+						<span class="list-icon"><Icon name="users" size={17} /></span>
+						<span class="list-main">
+							<span class="list-title">{u.pilot_name}</span>
+							<span class="list-sub">{u.flights} flight{u.flights === 1 ? '' : 's'} · {u.hours} h · at the current member rate</span>
+						</span>
+						<span class="list-end">
+							<span class="mono amount">€{u.amount}</span>
+							<form method="POST" action="?/create">
+								<input type="hidden" name="pilot_id" value={u.pilot_id} />
+								<button type="submit" class="btn btn-teal xs">Create invoice</button>
+							</form>
+						</span>
+					</div>
+				{/each}
+			</div>
+			<form method="POST" action="?/createAll">
+				<button type="submit" class="btn sm"><Icon name="receipt" size={16} /> Create all {data.unbilled.length} invoices</button>
+			</form>
+		</div>
+	{/if}
+
+	<p class="section-label">Invoices</p>
+	{#if data.invoices.length === 0}
+		<div class="card"><p class="muted">No invoices yet.</p></div>
+	{:else}
+		<div class="card">
+			<div class="table-wrap">
+				<table class="table">
+					<thead>
+						<tr><th>Number</th><th>Pilot</th><th>Period</th><th>Issued</th><th>Due</th><th class="num">Total €</th><th>Status</th><th>Paid</th><th></th></tr>
+					</thead>
+					<tbody>
+						{#each data.invoices as inv (inv.id)}
+							<tr>
+								<td class="mono"><a href="/invoices/{inv.id}">{inv.number}</a></td>
+								<td>{inv.pilot_name}</td>
+								<td class="mono">{inv.period}</td>
+								<td class="mono">{inv.issued}</td>
+								<td class="mono">{inv.due}</td>
+								<td class="num">{inv.total}</td>
+								<td><span class="status {inv.overdue ? 'overdue' : inv.status}">{inv.overdue ? 'overdue' : inv.status}</span></td>
+								<td class="faint">{inv.paid}</td>
+								<td class="actions">
+									{#if inv.status === 'issued'}
+										<form method="POST" action="?/markPaid" class="pay">
+											<input type="hidden" name="id" value={inv.id} />
+											<input name="reference" placeholder="reference" class="ref" />
+											<button type="submit" class="btn btn-teal xs">Mark paid</button>
+										</form>
+										<form method="POST" action="?/cancel"><input type="hidden" name="id" value={inv.id} /><button type="submit" class="btn btn-danger xs">Cancel</button></form>
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{/if}
+</div>
 
 <style>
-	h2 {
-		margin-top: 1.5rem;
-		font-size: 1.1rem;
-	}
-	.hint {
-		color: #55585c;
-		font-size: 0.85rem;
-		margin-top: -0.4rem;
-	}
-	.table-wrap {
-		overflow-x: auto;
-	}
-	table {
-		border-collapse: collapse;
-		width: 100%;
-	}
-	table.compact {
-		max-width: 40rem;
-	}
-	th,
-	td {
-		text-align: left;
-		padding: 0.4rem 0.55rem;
-		border-bottom: 1px solid #dddee0;
-		font-size: 0.85rem;
-		white-space: nowrap;
-		vertical-align: middle;
-	}
-	.num {
-		text-align: right;
-		font-family: ui-monospace, monospace;
-	}
-	.mono {
-		font-family: ui-monospace, monospace;
-	}
-	.all {
-		margin-top: 0.6rem;
-	}
-	.actions {
+	.list-main {
 		display: flex;
-		gap: 0.4rem;
-		align-items: center;
+		flex-direction: column;
 	}
-	.pay {
-		display: flex;
-		gap: 0.3rem;
+	.amount {
+		font-weight: 700;
 	}
-	.pay input {
-		width: 10rem;
-		padding: 0.25rem 0.4rem;
+	.ref {
+		border: 1px solid var(--line-strong);
+		border-radius: 8px;
+		padding: 5px 8px;
+		width: 9rem;
+		font-size: 12px;
+		font-family: var(--sans);
 	}
-	button {
-		cursor: pointer;
-		padding: 0.3rem 0.7rem;
-	}
-	button.danger {
-		color: #b3261e;
-	}
-	.status {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: #55585c;
-	}
-	.status.paid {
-		color: #1863dc;
-	}
-	.status.cancelled {
-		color: #8a8d90;
-		text-decoration: line-through;
-	}
-	.overdue {
-		color: #b3261e;
-	}
-	.error {
-		color: #b3261e;
-	}
-	.notice {
-		color: #1863dc;
+	.btn {
+		align-self: flex-start;
 	}
 </style>

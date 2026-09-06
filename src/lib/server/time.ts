@@ -57,6 +57,26 @@ export function fromHelsinkiInputValue(value: string): Date {
 	return new Date(guess);
 }
 
+/** "Tue 08 Sept" in Helsinki time — for grouping and headings. */
+export function helsinkiDay(date: Date): string {
+	return new Intl.DateTimeFormat('en-GB', {
+		timeZone: TIME_ZONE,
+		weekday: 'short',
+		day: '2-digit',
+		month: 'short'
+	}).format(date);
+}
+
+/** "18:00" in Helsinki time. */
+export function helsinkiTime(date: Date): string {
+	return toHelsinkiInputValue(date).slice(11);
+}
+
+/** "Tue 08 Sept, 18:00 – 20:00" in Helsinki time. */
+export function helsinkiRange(start: Date, end: Date): string {
+	return `${helsinkiDay(start)}, ${helsinkiTime(start)} – ${helsinkiTime(end)}`;
+}
+
 /** Formats a UTC Date for display, e.g. "6 Sep 2026, 18:00 (Helsinki)". */
 export function formatHelsinki(date: Date): string {
 	const formatted = new Intl.DateTimeFormat('en-GB', {

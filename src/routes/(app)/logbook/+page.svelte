@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 </script>
@@ -7,157 +8,91 @@
 	<title>My logbook — Cirkus</title>
 </svelte:head>
 
-<h1>My logbook</h1>
-<p class="hint">All times UTC. Hours are Hobbs-based.</p>
+<div class="page">
+	<div class="page-head">
+		<div>
+			<p class="eyebrow">Personal records · UTC</p>
+			<h1>My logbook</h1>
+		</div>
+		<a href="/log" class="btn sm"><Icon name="pencil" size={16} /> Log a flight</a>
+	</div>
 
-{#if data.saved}
-	<p class="notice">Flight saved.</p>
-{/if}
-{#if form?.error}
-	<p class="error">{form.error}</p>
-{/if}
+	{#if data.saved}<p class="alert notice">Flight saved.</p>{/if}
+	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
 
-<div class="totals">
-	<div><span class="big">{data.totals.total}</span><span class="label">Total hrs</span></div>
-	<div><span class="big">{data.totals.pic}</span><span class="label">PIC hrs</span></div>
-	<div><span class="big">{data.totals.month}</span><span class="label">This month</span></div>
+	<div class="card stats3">
+		<div class="stat"><div class="n">{data.totals.total}</div><div class="l">Total hrs</div></div>
+		<div class="stat"><div class="n">{data.totals.pic}</div><div class="l">PIC hrs</div></div>
+		<div class="stat"><div class="n">{data.totals.month}</div><div class="l">This month</div></div>
+	</div>
+
+	<p class="section-label">Flights</p>
+	{#if data.entries.length === 0}
+		<div class="card"><p class="muted">No flights logged yet.</p></div>
+	{:else}
+		<!-- phone: list -->
+		<div class="card tight only-phone">
+			{#each data.entries as e (e.id)}
+				<div class="list-item">
+					<span class="list-icon" class:teal={e.role === 'PIC'}><Icon name="plane" size={17} /></span>
+					<span class="list-main">
+						<span class="list-title"><span class="tailnum">{e.tail_number}</span> · <span class="tailnum">{e.route}</span></span>
+						<span class="list-sub">{e.date} · {e.hours} h · Hobbs {e.hobbs} · {e.flight_type}</span>
+					</span>
+					<span class="list-end">
+						<span class="chip" class:teal={e.role === 'PIC'} class:amber={e.role !== 'PIC'}>{e.role}</span>
+					</span>
+				</div>
+			{/each}
+		</div>
+		<!-- laptop: table -->
+		<div class="card only-desk">
+			<div class="table-wrap">
+				<table class="table">
+					<thead>
+						<tr><th>Date · UTC</th><th>Flight</th><th class="num">Hrs</th><th>Details</th><th>Role</th><th>Crew</th><th>Status</th><th></th></tr>
+					</thead>
+					<tbody>
+						{#each data.entries as e (e.id)}
+							<tr>
+								<td class="mono">{e.date}<span class="sub">{e.blockOff} – {e.blockOn}</span></td>
+								<td><span class="tailnum">{e.tail_number}</span><span class="sub">{e.route}</span></td>
+								<td class="num">{e.hours}<span class="sub">{e.hobbs}</span></td>
+								<td>{e.flight_type}<span class="sub">ldg {e.landings}</span></td>
+								<td><span class="chip" class:teal={e.role === 'PIC'} class:amber={e.role !== 'PIC'}>{e.role}</span></td>
+								<td>{e.role === 'PIC' ? (e.second_name ?? '') : e.pic_name}</td>
+								<td><span class="status {e.status}">{e.status}</span></td>
+								<td class="actions">
+									{#if e.canDelete}
+										<form method="POST" action="?/delete">
+											<input type="hidden" name="id" value={e.id} />
+											<button type="submit" class="btn btn-danger xs">Delete</button>
+										</form>
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{/if}
 </div>
 
-<p><a href="/log">Log a flight →</a></p>
-
-{#if data.entries.length === 0}
-	<p>No flights logged yet.</p>
-{:else}
-	<div class="table-wrap">
-		<table>
-			<thead>
-				<tr>
-					<th>Date</th>
-					<th>Aircraft</th>
-					<th>Route</th>
-					<th>Off / On</th>
-					<th>Hobbs</th>
-					<th>Hrs</th>
-					<th>Ldg D/N</th>
-					<th>Type</th>
-					<th>Role</th>
-					<th>Crew</th>
-					<th>Status</th>
-					<th></th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each data.entries as e (e.id)}
-					<tr>
-						<td class="mono">{e.date}</td>
-						<td>{e.tail_number}</td>
-						<td class="mono">{e.route}</td>
-						<td class="mono">{e.blockOff} / {e.blockOn}</td>
-						<td class="mono">{e.hobbs}</td>
-						<td class="mono">{e.hours}</td>
-						<td class="mono">{e.landings}</td>
-						<td>{e.flight_type}</td>
-						<td><span class="chip" class:pic={e.role === 'PIC'}>{e.role}</span></td>
-						<td>{e.role === 'PIC' ? (e.second_name ?? '') : e.pic_name}</td>
-						<td><span class="status {e.status}">{e.status}</span></td>
-						<td>
-							{#if e.canDelete}
-								<form method="POST" action="?/delete">
-									<input type="hidden" name="id" value={e.id} />
-									<button type="submit" class="danger">Delete</button>
-								</form>
-							{/if}
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-{/if}
-
 <style>
-	.hint {
-		color: #55585c;
-		font-size: 0.85rem;
-		margin-top: -0.5rem;
-	}
-	.totals {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		max-width: 28rem;
-		border: 1px solid #dddee0;
-		border-radius: 8px;
-		margin: 1rem 0;
-	}
-	.totals > div {
+	.list-main {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		padding: 0.7rem 0;
 	}
-	.totals > div + div {
-		border-left: 1px solid #dddee0;
+	.only-desk {
+		display: none;
 	}
-	.big {
-		font-family: ui-monospace, monospace;
-		font-weight: 700;
-		font-size: 1.3rem;
-	}
-	.label {
-		font-size: 0.75rem;
-		color: #55585c;
-	}
-	.table-wrap {
-		overflow-x: auto;
-	}
-	table {
-		border-collapse: collapse;
-		width: 100%;
-	}
-	th,
-	td {
-		text-align: left;
-		padding: 0.4rem 0.55rem;
-		border-bottom: 1px solid #dddee0;
-		font-size: 0.85rem;
-		white-space: nowrap;
-	}
-	.mono {
-		font-family: ui-monospace, monospace;
-	}
-	.chip {
-		border: 1px solid #c7c9cc;
-		border-radius: 999px;
-		padding: 0.05rem 0.5rem;
-		font-size: 0.75rem;
-	}
-	.chip.pic {
-		background: #e3ecfb;
-		border-color: #1863dc;
-		color: #1863dc;
-	}
-	.status {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: #55585c;
-	}
-	.status.approved {
-		color: #1863dc;
-	}
-	.status.billed {
-		color: #1a1a1c;
-		font-weight: 600;
-	}
-	button.danger {
-		color: #b3261e;
-		cursor: pointer;
-		padding: 0.2rem 0.5rem;
-	}
-	.error {
-		color: #b3261e;
-	}
-	.notice {
-		color: #1863dc;
+	@media (min-width: 900px) {
+		.only-phone {
+			display: none;
+		}
+		.only-desk {
+			display: block;
+		}
 	}
 </style>

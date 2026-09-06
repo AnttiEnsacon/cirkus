@@ -7,84 +7,73 @@
 	<title>Accounts — Cirkus</title>
 </svelte:head>
 
-<h1>Accounts</h1>
-
-{#if form?.error}
-	<p class="error">{form.error}</p>
-{/if}
-{#if form?.passwordSetFor}
-	<p class="notice">Password updated.</p>
-{/if}
-
-<div class="cards">
-	{#each data.users as person (person.id)}
-		<div class="card">
-			<form method="POST" action="?/update" class="row">
-				<input type="hidden" name="id" value={person.id} />
-				<input name="name" value={person.name} required />
-				<input name="email" type="email" value={person.email} required />
-				<select name="role">
-					<option value="pilot" selected={person.role === 'pilot'}>pilot</option>
-					<option value="admin" selected={person.role === 'admin'}>admin</option>
-				</select>
-				<select name="status">
-					<option value="approved" selected={person.status === 'approved'}>approved</option>
-					<option value="pending" selected={person.status === 'pending'}>pending</option>
-					<option value="rejected" selected={person.status === 'rejected'}>rejected</option>
-				</select>
-				<button type="submit">Save</button>
-			</form>
-
-			<form method="POST" action="?/setPassword" class="row password-row">
-				<input type="hidden" name="id" value={person.id} />
-				<span class="hint">{person.hasPassword ? 'Password set' : 'No password set'}</span>
-				<input name="password" type="password" placeholder="New password" minlength="8" />
-				<button type="submit">Set password</button>
-			</form>
+<div class="page">
+	<div class="page-head">
+		<div>
+			<p class="eyebrow">Admin</p>
+			<h1>Accounts</h1>
 		</div>
-	{/each}
+	</div>
+
+	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
+	{#if form?.passwordSetFor}<p class="alert notice">Password updated.</p>{/if}
+
+	<div class="stack">
+		{#each data.users as person (person.id)}
+			<div class="card stack">
+				<div class="row between wrap">
+					<div>
+						<div class="list-title">{person.name}</div>
+						<div class="list-sub">{person.email}</div>
+					</div>
+					<div class="chiprow">
+						<span class="chip" class:on={person.role === 'admin'}>{person.role}</span>
+						<span class="status {person.status}">{person.status}</span>
+					</div>
+				</div>
+
+				<form method="POST" action="?/update" class="fields">
+					<input type="hidden" name="id" value={person.id} />
+					<label class="field"><span>Name</span><input name="name" value={person.name} required /></label>
+					<label class="field"><span>Email</span><input name="email" type="email" value={person.email} required /></label>
+					<label class="field">
+						<span>Role</span>
+						<select name="role">
+							<option value="pilot" selected={person.role === 'pilot'}>pilot</option>
+							<option value="admin" selected={person.role === 'admin'}>admin</option>
+						</select>
+					</label>
+					<label class="field">
+						<span>Status</span>
+						<select name="status">
+							<option value="approved" selected={person.status === 'approved'}>approved</option>
+							<option value="pending" selected={person.status === 'pending'}>pending</option>
+							<option value="rejected" selected={person.status === 'rejected'}>rejected</option>
+						</select>
+					</label>
+					<div class="field"><span>&nbsp;</span><button type="submit" class="btn btn-secondary sm">Save</button></div>
+				</form>
+
+				<hr class="hr" />
+
+				<form method="POST" action="?/setPassword" class="fields pw">
+					<input type="hidden" name="id" value={person.id} />
+					<label class="field">
+						<span>{person.hasPassword ? 'Set a new password' : 'No password set yet'}</span>
+						<input name="password" type="password" placeholder="At least 8 characters" minlength="8" autocomplete="new-password" />
+					</label>
+					<div class="field"><span>&nbsp;</span><button type="submit" class="btn sm">Set password</button></div>
+				</form>
+			</div>
+		{/each}
+	</div>
 </div>
 
 <style>
-	.cards {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		max-width: 44rem;
+	.fields {
+		align-items: end;
 	}
-	.card {
-		border: 1px solid #dddee0;
-		border-radius: 8px;
-		padding: 0.75rem;
-	}
-	.row {
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-		flex-wrap: wrap;
-	}
-	.password-row {
-		margin-top: 0.5rem;
-		padding-top: 0.5rem;
-		border-top: 1px dashed #dddee0;
-	}
-	input,
-	select {
-		padding: 0.4rem;
-	}
-	.hint {
-		font-size: 0.85rem;
-		color: #55585c;
-		min-width: 8rem;
-	}
-	button {
-		cursor: pointer;
-		padding: 0.35rem 0.75rem;
-	}
-	.error {
-		color: #b3261e;
-	}
-	.notice {
-		color: #1863dc;
+	.pw {
+		grid-template-columns: minmax(180px, 2fr) minmax(120px, 1fr);
 	}
 </style>

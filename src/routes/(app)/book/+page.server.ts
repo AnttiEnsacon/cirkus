@@ -1,9 +1,9 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { fromHelsinkiInputValue, toHelsinkiInputValue } from '$lib/server/time';
+import { fromHelsinkiInputValue, toHelsinkiInputValue, helsinkiDay, helsinkiTime } from '$lib/server/time';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
 	const aircraft = await db
 		.selectFrom('aircraft')
 		.select(['id', 'tail_number', 'type', 'seats'])
@@ -27,16 +27,17 @@ export const load: PageServerLoad = async () => {
 		.orderBy('reservations.starts_at', 'asc')
 		.execute();
 
+	const dayOf = helsinkiDay;
+	const timeOf = helsinkiTime;
+
 	const upcoming = rows.map((r) => ({
 		id: r.id,
 		tail_number: r.tail_number,
 		pilot_name: r.pilot_name,
-		user_id: r.user_id,
+		mine: r.user_id === locals.user!.id,
 		notes: r.notes,
-		starts_at: toHelsinkiInputValue(new Date(r.starts_at)),
-		ends_at: toHelsinkiInputValue(new Date(r.ends_at)),
-		starts_at_display: new Date(r.starts_at),
-		ends_at_display: new Date(r.ends_at)
+		day: dayOf(new Date(r.starts_at)),
+		time: `${timeOf(new Date(r.starts_at))} – ${timeOf(new Date(r.ends_at))}`
 	}));
 
 	// Sensible default start: next full hour, Helsinki time.
@@ -48,6 +49,7 @@ export const load: PageServerLoad = async () => {
 	return {
 		aircraft,
 		upcoming,
+		isAdmin: locals.user!.role === 'admin',
 		defaultStart: toHelsinkiInputValue(defaultStart),
 		defaultEnd: toHelsinkiInputValue(defaultEnd)
 	};

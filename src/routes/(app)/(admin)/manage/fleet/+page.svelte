@@ -1,19 +1,11 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 
 	function ownerNames(aircraftId: string): string {
 		const ids = data.ownersByAircraft[aircraftId] ?? [];
-		return (
-			ids
-				.map((id) => data.people.find((p) => p.id === id)?.name)
-				.filter(Boolean)
-				.join(', ') || 'No owners set'
-		);
-	}
-
-	function eur(amount: string): string {
-		return `€${Number(amount).toFixed(2)}/h`;
+		return ids.map((id) => data.people.find((p) => p.id === id)?.name).filter(Boolean).join(', ') || 'No owners set';
 	}
 </script>
 
@@ -21,164 +13,108 @@
 	<title>Fleet — Cirkus</title>
 </svelte:head>
 
-<h1>Fleet</h1>
+<div class="page">
+	<div class="page-head">
+		<div>
+			<p class="eyebrow">Admin</p>
+			<h1>Fleet</h1>
+		</div>
+	</div>
 
-{#if form?.error}
-	<p class="error">{form.error}</p>
-{/if}
+	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
 
-<div class="cards">
 	{#each data.aircraft as plane (plane.id)}
-		<div class="card">
-			<h2>{plane.tail_number}</h2>
-			<p class="owners">{ownerNames(plane.id)}</p>
+		<div class="card stack">
+			<div class="row">
+				<span class="list-icon teal"><Icon name="plane" /></span>
+				<div class="list-main">
+					<div class="list-title"><span class="tailnum" style="font-size:16px">{plane.tail_number}</span> · {plane.type}</div>
+					<div class="list-sub">{ownerNames(plane.id)}</div>
+				</div>
+			</div>
 
-			<form method="POST" action="?/update" class="row">
+			<div class="stats3 rates">
+				<div class="stat"><div class="n">€{Number(plane.member_rate_per_hour).toFixed(0)}</div><div class="l">member /h</div></div>
+				<div class="stat"><div class="n">€{Number(plane.guest_rate_per_hour).toFixed(0)}</div><div class="l">guest /h</div></div>
+				<div class="stat"><div class="n">{plane.seats}</div><div class="l">seats</div></div>
+			</div>
+
+			<form method="POST" action="?/update" class="fields">
 				<input type="hidden" name="id" value={plane.id} />
-				<label>
-					Type
-					<input name="type" value={plane.type} required />
-				</label>
-				<label>
-					Seats
-					<input name="seats" type="number" min="1" value={plane.seats} required />
-				</label>
-				<label>
-					Member rate (€/h)
-					<input
-						name="member_rate_per_hour"
-						type="number"
-						step="0.01"
-						min="0"
-						value={plane.member_rate_per_hour}
-						required
-					/>
-				</label>
-				<label>
-					Guest rate (€/h)
-					<input
-						name="guest_rate_per_hour"
-						type="number"
-						step="0.01"
-						min="0"
-						value={plane.guest_rate_per_hour}
-						required
-					/>
-				</label>
-				<button type="submit">Save</button>
+				<label class="field"><span>Type</span><input name="type" value={plane.type} required /></label>
+				<label class="field"><span>Seats</span><input name="seats" type="number" min="1" value={plane.seats} required /></label>
+				<label class="field"><span>Member rate €/h</span><input name="member_rate_per_hour" class="mono" type="number" step="0.01" min="0" value={plane.member_rate_per_hour} required /></label>
+				<label class="field"><span>Guest rate €/h</span><input name="guest_rate_per_hour" class="mono" type="number" step="0.01" min="0" value={plane.guest_rate_per_hour} required /></label>
+				<div class="field"><span>&nbsp;</span><button type="submit" class="btn btn-secondary sm">Save</button></div>
 			</form>
 
 			<details>
-				<summary>Co-owners</summary>
-				<form method="POST" action="?/updateOwners" class="owner-form">
+				<summary class="section-label">Co-owners</summary>
+				<form method="POST" action="?/updateOwners" class="stack owners">
 					<input type="hidden" name="aircraft_id" value={plane.id} />
-					{#each data.people as person (person.id)}
-						<label class="owner-check">
-							<input
-								type="checkbox"
-								name="owner_ids"
-								value={person.id}
-								checked={(data.ownersByAircraft[plane.id] ?? []).includes(person.id)}
-							/>
-							{person.name}
-						</label>
-					{/each}
-					<button type="submit">Save co-owners</button>
+					<div class="owner-grid">
+						{#each data.people as person (person.id)}
+							<label class="field inline">
+								<input type="checkbox" name="owner_ids" value={person.id} checked={(data.ownersByAircraft[plane.id] ?? []).includes(person.id)} />
+								<span>{person.name}</span>
+							</label>
+						{/each}
+					</div>
+					<button type="submit" class="btn btn-secondary sm">Save co-owners</button>
 				</form>
 			</details>
-
-			<p class="rates-preview">{eur(plane.member_rate_per_hour)} members · {eur(
-					plane.guest_rate_per_hour
-				)} guests · {plane.seats} seats</p>
 		</div>
 	{/each}
+
+	<form method="POST" action="?/add" class="card stack">
+		<p class="section-label">Add an aircraft</p>
+		<div class="fields">
+			<label class="field"><span>Tail number</span><input name="tail_number" class="mono" placeholder="OH-XXX" required /></label>
+			<label class="field"><span>Type</span><input name="type" placeholder="Cirrus SR20" required /></label>
+			<label class="field"><span>Seats</span><input name="seats" type="number" min="1" required /></label>
+			<label class="field"><span>Member rate €/h</span><input name="member_rate_per_hour" class="mono" type="number" step="0.01" min="0" required /></label>
+			<label class="field"><span>Guest rate €/h</span><input name="guest_rate_per_hour" class="mono" type="number" step="0.01" min="0" required /></label>
+		</div>
+		<button type="submit" class="btn sm"><Icon name="plus" size={16} /> Add aircraft</button>
+	</form>
 </div>
 
-<h2>Add an aircraft</h2>
-<form method="POST" action="?/add" class="row">
-	<label>
-		Tail number
-		<input name="tail_number" placeholder="OH-XXX" required />
-	</label>
-	<label>
-		Type
-		<input name="type" placeholder="Cirrus SR20" required />
-	</label>
-	<label>
-		Seats
-		<input name="seats" type="number" min="1" required />
-	</label>
-	<label>
-		Member rate (€/h)
-		<input name="member_rate_per_hour" type="number" step="0.01" min="0" required />
-	</label>
-	<label>
-		Guest rate (€/h)
-		<input name="guest_rate_per_hour" type="number" step="0.01" min="0" required />
-	</label>
-	<button type="submit">Add aircraft</button>
-</form>
-
 <style>
-	.cards {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		max-width: 44rem;
+	.fields {
+		align-items: end;
 	}
-	.card {
-		border: 1px solid #dddee0;
-		border-radius: 8px;
-		padding: 0.9rem 1rem;
+	.rates {
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		padding: 10px 0;
 	}
-	.card h2 {
-		margin: 0 0 0.15rem;
+	summary {
+		cursor: pointer;
+		list-style: none;
+	}
+	summary::-webkit-details-marker {
+		display: none;
+	}
+	summary::before {
+		content: '▸ ';
+	}
+	details[open] summary::before {
+		content: '▾ ';
 	}
 	.owners {
-		margin: 0 0 0.6rem;
-		color: #55585c;
-		font-size: 0.9rem;
+		margin-top: 10px;
 	}
-	.rates-preview {
-		margin: 0.6rem 0 0;
-		font-size: 0.85rem;
-		color: #55585c;
+	.owner-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+		gap: 6px 12px;
 	}
-	.row {
-		display: flex;
-		gap: 0.5rem;
-		align-items: flex-end;
-		flex-wrap: wrap;
+	.field.inline > span {
+		font-weight: 600;
+		font-size: 13.5px;
+		color: var(--ink);
 	}
-	label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-		font-size: 0.85rem;
-	}
-	input {
-		padding: 0.4rem;
-	}
-	button {
-		cursor: pointer;
-		padding: 0.4rem 0.8rem;
-	}
-	details {
-		margin-top: 0.6rem;
-	}
-	.owner-form {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-		margin-top: 0.5rem;
-		max-width: 16rem;
-	}
-	.owner-check {
-		flex-direction: row;
-		align-items: center;
-		gap: 0.4rem;
-	}
-	.error {
-		color: #b3261e;
+	.btn {
+		align-self: flex-start;
 	}
 </style>

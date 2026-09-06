@@ -8,66 +8,68 @@
 </svelte:head>
 
 <main class="auth">
-	<h1>Create your Cirkus account</h1>
+	<div class="lockup">
+		<img src="/cirkus-logo.png" alt="Cirkus" />
+		<p class="eyebrow">KML Aviation Oy</p>
+	</div>
 
 	{#if form?.success}
-		<p class="notice">
-			Thanks — your account was created. An admin needs to approve it before you can log in;
-			you'll be able to sign in once that happens.
-		</p>
+		<div class="card stack">
+			<h1>Thanks — you're registered</h1>
+			<p class="muted">An admin needs to approve your account before you can log in. You'll be able to sign in once that's done.</p>
+			<a href="/login" class="btn btn-secondary block">Back to log in</a>
+		</div>
 	{:else}
-		<form method="POST">
+		<form method="POST" class="card stack">
+			<h1>Create your account</h1>
 			{#if form?.error}
-				<p class="error">{form.error}</p>
+				<p class="alert error">{form.error}</p>
 			{/if}
-			<label>
-				Name
-				<input name="name" type="text" value={form?.name ?? ''} required />
+			<label class="field">
+				<span>Name</span>
+				<input name="name" type="text" value={form?.name ?? ''} required autocomplete="name" />
 			</label>
-			<label>
-				Email
-				<input name="email" type="email" value={form?.email ?? ''} required />
+			<label class="field">
+				<span>Email</span>
+				<input name="email" type="email" value={form?.email ?? ''} required autocomplete="email" />
 			</label>
-			<label>
-				Password
-				<input name="password" type="password" minlength="8" required />
+			<label class="field">
+				<span>Password</span>
+				<input name="password" type="password" minlength="8" required autocomplete="new-password" />
 			</label>
-			<button type="submit">Register</button>
+			<button type="submit" class="btn block">Register</button>
 		</form>
-		<p><a href="/login">Already have an account? Log in</a></p>
+		<p class="faint center"><a href="/login">Already have an account? Log in</a></p>
 	{/if}
 </main>
 
 <style>
 	.auth {
-		max-width: 22rem;
-		margin: 4rem auto;
-		font-family: system-ui, sans-serif;
-	}
-	form {
+		max-width: 24rem;
+		margin: 0 auto;
+		padding: 48px 20px 40px;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 18px;
 	}
-	label {
+	.lockup {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		font-size: 0.9rem;
+		align-items: center;
+		gap: 10px;
+		padding: 12px 0 6px;
 	}
-	input {
-		padding: 0.5rem;
-		font-size: 1rem;
+	.lockup img {
+		width: 168px;
+		height: auto;
 	}
-	button {
-		padding: 0.6rem;
-		font-size: 1rem;
-		cursor: pointer;
+	.lockup .eyebrow {
+		margin: 0;
 	}
-	.error {
-		color: #b3261e;
+	h1 {
+		font-size: 18px;
 	}
-	.notice {
-		color: #1863dc;
+	.center {
+		text-align: center;
 	}
 </style>

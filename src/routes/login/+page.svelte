@@ -8,57 +8,52 @@
 </svelte:head>
 
 <main class="auth">
-	<h1>Cirkus</h1>
-	<p class="sub">KML Aviation Oy</p>
+	<div class="lockup">
+		<img src="/cirkus-logo.png" alt="Cirkus" />
+		<p class="eyebrow">KML Aviation Oy</p>
+	</div>
 
-	<form method="POST">
+	<form method="POST" class="card stack">
 		{#if form?.error}
-			<p class="error">{form.error}</p>
+			<p class="alert error">{form.error}</p>
 		{/if}
-		<label>
-			Email
-			<input name="email" type="email" value={form?.email ?? ''} required />
+		<label class="field">
+			<span>Email</span>
+			<input name="email" type="email" value={form?.email ?? ''} required autocomplete="email" />
 		</label>
-		<label>
-			Password
-			<input name="password" type="password" required />
+		<label class="field">
+			<span>Password</span>
+			<input name="password" type="password" required autocomplete="current-password" />
 		</label>
-		<button type="submit">Log in</button>
+		<button type="submit" class="btn block">Log in</button>
 	</form>
-	<p><a href="/register">New here? Register</a></p>
+	<p class="faint center"><a href="/register">New here? Register</a></p>
 </main>
 
 <style>
 	.auth {
-		max-width: 22rem;
-		margin: 4rem auto;
-		font-family: system-ui, sans-serif;
-	}
-	.sub {
-		margin-top: -0.75rem;
-		color: #55585c;
-	}
-	form {
+		max-width: 24rem;
+		margin: 0 auto;
+		padding: 48px 20px 40px;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 18px;
 	}
-	label {
+	.lockup {
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
-		font-size: 0.9rem;
+		align-items: center;
+		gap: 10px;
+		padding: 12px 0 6px;
 	}
-	input {
-		padding: 0.5rem;
-		font-size: 1rem;
+	.lockup img {
+		width: 168px;
+		height: auto;
 	}
-	button {
-		padding: 0.6rem;
-		font-size: 1rem;
-		cursor: pointer;
+	.lockup .eyebrow {
+		margin: 0;
 	}
-	.error {
-		color: #b3261e;
+	.center {
+		text-align: center;
 	}
 </style>

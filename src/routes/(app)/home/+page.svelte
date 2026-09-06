@@ -1,154 +1,114 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
+	const needsAttention = $derived(
+		!!data.admin && (data.admin.pendingAccounts > 0 || data.admin.pendingFlights > 0 || Number(data.admin.unbilled) > 0)
+	);
 </script>
 
 <svelte:head>
 	<title>Home — Cirkus</title>
 </svelte:head>
 
-<h1>Hello, {data.firstName}</h1>
+<div class="page">
+	<div class="page-head">
+		<div>
+			<p class="eyebrow">KML Aviation Oy</p>
+			<h1>Hello, {data.firstName}</h1>
+		</div>
+	</div>
 
-{#if data.admin && (data.admin.pendingAccounts > 0 || data.admin.pendingFlights > 0 || Number(data.admin.unbilled) > 0)}
-	<section class="attention">
-		<h2>Needs your attention</h2>
-		<ul>
+	{#if data.admin && needsAttention}
+		<div class="card teal stack">
+			<p class="section-label" style="color:var(--teal)">Needs your attention</p>
 			{#if data.admin.pendingAccounts > 0}
-				<li><a href="/manage/approvals">{data.admin.pendingAccounts} account{data.admin.pendingAccounts === 1 ? '' : 's'} waiting for approval</a></li>
+				<a href="/manage/approvals" class="row attn"><Icon name="shield" /><span>{data.admin.pendingAccounts} account{data.admin.pendingAccounts === 1 ? '' : 's'} waiting for approval</span><Icon name="chevron" /></a>
 			{/if}
 			{#if data.admin.pendingFlights > 0}
-				<li><a href="/manage/flights">{data.admin.pendingFlights} flight{data.admin.pendingFlights === 1 ? '' : 's'} to approve</a></li>
+				<a href="/manage/flights" class="row attn"><Icon name="check" /><span>{data.admin.pendingFlights} flight{data.admin.pendingFlights === 1 ? '' : 's'} to approve</span><Icon name="chevron" /></a>
 			{/if}
 			{#if Number(data.admin.unbilled) > 0}
-				<li><a href="/manage/invoices">€{data.admin.unbilled} of approved flying not yet invoiced</a></li>
+				<a href="/manage/invoices" class="row attn"><Icon name="euro" /><span>€{data.admin.unbilled} of approved flying not yet invoiced</span><Icon name="chevron" /></a>
 			{/if}
-		</ul>
-	</section>
-{/if}
+		</div>
+	{/if}
 
-<div class="tiles">
-	<a class="tile" href="/book">
-		<span class="label">Next reservation</span>
-		{#if data.nextReservation}
-			<span class="value">{data.nextReservation.tail_number}</span>
-			<span class="sub">{data.nextReservation.when}</span>
+	<div class="grid-auto">
+		<a class="card stat" href="/book">
+			<div class="l">Next reservation</div>
+			{#if data.nextReservation}
+				<div class="n tailnum">{data.nextReservation.tail_number}</div>
+				<div class="faint">{data.nextReservation.when}</div>
+			{:else}
+				<div class="n muted">—</div>
+				<div class="faint">Book a slot →</div>
+			{/if}
+		</a>
+		<a class="card stat" href="/logbook">
+			<div class="l">Hours this month</div>
+			<div class="n">{data.hours.month}</div>
+			<div class="faint">{data.hours.total} total</div>
+		</a>
+		<a class="card stat" href="/invoices">
+			<div class="l">Open balance</div>
+			<div class="n">€{data.open.amount}</div>
+			<div class="faint">{data.open.count === 0 ? 'Nothing due' : `${data.open.count} open invoice${data.open.count === 1 ? '' : 's'}`}</div>
+		</a>
+		<a class="card stat" href="/log">
+			<div class="l">Last flight</div>
+			{#if data.lastFlight}
+				<div class="n tailnum" style="font-size:19px">{data.lastFlight.route}</div>
+				<div class="faint">{data.lastFlight.date} · {data.lastFlight.tail_number} · {data.lastFlight.hours} h · <span class="status {data.lastFlight.status}">{data.lastFlight.status}</span></div>
+			{:else}
+				<div class="n muted">—</div>
+				<div class="faint">Log a flight →</div>
+			{/if}
+		</a>
+	</div>
+
+	<div class="grid-auto quick">
+		<a href="/book" class="btn btn-secondary"><Icon name="calendar" size={18} /> Book</a>
+		<a href="/log" class="btn btn-secondary"><Icon name="pencil" size={18} /> Log a flight</a>
+	</div>
+
+	<p class="section-label">Coming up this week</p>
+	<div class="card tight">
+		{#if data.upcoming.length === 0}
+			<p class="muted" style="padding:10px 2px">Nothing booked in the next 7 days.</p>
 		{:else}
-			<span class="value muted">None</span>
-			<span class="sub">Book a slot →</span>
+			{#each data.upcoming as r (r.id)}
+				<div class="list-item">
+					<span class="list-icon teal"><Icon name="plane" size={17} /></span>
+					<span class="list-main">
+						<span class="list-title"><span class="tailnum">{r.tail_number}</span> · {r.name}</span>
+						<span class="list-sub">{r.when}</span>
+					</span>
+				</div>
+			{/each}
 		{/if}
-	</a>
-	<a class="tile" href="/logbook">
-		<span class="label">Hours this month</span>
-		<span class="value mono">{data.hours.month}</span>
-		<span class="sub">{data.hours.total} total</span>
-	</a>
-	<a class="tile" href="/invoices">
-		<span class="label">Open balance</span>
-		<span class="value mono">€{data.open.amount}</span>
-		<span class="sub">{data.open.count === 0 ? 'Nothing due' : `${data.open.count} open invoice${data.open.count === 1 ? '' : 's'}`}</span>
-	</a>
-	<a class="tile" href="/log">
-		<span class="label">Last flight</span>
-		{#if data.lastFlight}
-			<span class="value">{data.lastFlight.route}</span>
-			<span class="sub">{data.lastFlight.date} · {data.lastFlight.tail_number} · {data.lastFlight.hours} h · {data.lastFlight.status}</span>
-		{:else}
-			<span class="value muted">None yet</span>
-			<span class="sub">Log a flight →</span>
-		{/if}
-	</a>
+	</div>
+	<p class="hint">Reservation times are Helsinki local time. Logbook times are UTC.</p>
 </div>
 
-<section>
-	<h2>Coming up this week</h2>
-	{#if data.upcoming.length === 0}
-		<p class="muted">Nothing booked in the next 7 days.</p>
-	{:else}
-		<ul class="upcoming">
-			{#each data.upcoming as r (r.id)}
-				<li><span class="mono">{r.when}</span> · {r.tail_number} · {r.name}</li>
-			{/each}
-		</ul>
-	{/if}
-	<p class="hint">Reservation times are Helsinki local time. Logbook times are UTC.</p>
-</section>
-
 <style>
-	.attention {
-		border: 1px solid #1863dc;
-		background: #e3ecfb;
-		border-radius: 8px;
-		padding: 0.6rem 1rem;
-		margin-bottom: 1.2rem;
-		max-width: 44rem;
-	}
-	.attention h2 {
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin: 0 0 0.3rem;
-		color: #1863dc;
-	}
-	.attention ul {
-		margin: 0;
-		padding-left: 1.1rem;
-	}
-	.tiles {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-		gap: 0.75rem;
-		max-width: 60rem;
-	}
-	.tile {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		border: 1px solid #dddee0;
-		border-radius: 8px;
-		padding: 0.8rem 1rem;
+	.attn {
+		color: var(--ink);
 		text-decoration: none;
-		color: inherit;
+		font-weight: 600;
+		font-size: 13.5px;
 	}
-	.tile:hover {
-		border-color: #1863dc;
+	.attn span {
+		flex: 1 1 auto;
 	}
-	.label {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: #55585c;
+	.stat .n.muted {
+		color: var(--ink-faint);
 	}
-	.value {
-		font-size: 1.35rem;
-		font-weight: 700;
+	.quick .btn {
+		width: 100%;
 	}
-	.sub {
-		font-size: 0.85rem;
-		color: #55585c;
-	}
-	.mono {
-		font-family: ui-monospace, monospace;
-	}
-	.muted {
-		color: #8a8d90;
-	}
-	section {
-		margin-top: 1.5rem;
-	}
-	section h2 {
-		font-size: 1rem;
-	}
-	.upcoming {
-		list-style: none;
-		padding: 0;
-		margin: 0;
+	.list-main {
 		display: flex;
 		flex-direction: column;
-		gap: 0.3rem;
-		font-size: 0.9rem;
-	}
-	.hint {
-		color: #8a8d90;
-		font-size: 0.8rem;
 	}
 </style>

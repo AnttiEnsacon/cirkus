@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 </script>
@@ -7,70 +8,47 @@
 	<title>Invoices — Cirkus</title>
 </svelte:head>
 
-<h1>Invoices</h1>
-<p class="open">Open balance: <strong>€{data.open}</strong></p>
+<div class="page">
+	<div class="page-head">
+		<div>
+			<p class="eyebrow">Billing</p>
+			<h1>Invoices</h1>
+		</div>
+	</div>
 
-{#if data.invoices.length === 0}
-	<p>No invoices yet.</p>
-{:else}
-	<table>
-		<thead>
-			<tr><th>Number</th><th>Period</th><th>Issued</th><th>Due</th><th>Total (€)</th><th>Status</th></tr>
-		</thead>
-		<tbody>
+	<div class="card stat">
+		<div class="l">Open balance</div>
+		<div class="n">€{data.open}</div>
+	</div>
+
+	{#if data.invoices.length === 0}
+		<div class="card"><p class="muted">No invoices yet.</p></div>
+	{:else}
+		<div class="card tight">
 			{#each data.invoices as inv (inv.id)}
-				<tr>
-					<td class="mono"><a href="/invoices/{inv.id}">{inv.number}</a></td>
-					<td class="mono">{inv.period}</td>
-					<td class="mono">{inv.issued}</td>
-					<td class="mono" class:overdue={inv.overdue}>{inv.due}{inv.overdue ? ' (overdue)' : ''}</td>
-					<td class="num">{inv.total}</td>
-					<td><span class="status {inv.status}">{inv.status}</span></td>
-				</tr>
+				<a href="/invoices/{inv.id}" class="list-item link">
+					<span class="list-icon" class:teal={inv.status === 'issued'}><Icon name="receipt" size={17} /></span>
+					<span class="list-main">
+						<span class="list-title"><span class="mono">{inv.number}</span> · €{inv.total}</span>
+						<span class="list-sub">{inv.period} · due {inv.due}{inv.overdue ? ' · overdue' : ''}</span>
+					</span>
+					<span class="list-end">
+						<span class="status {inv.overdue ? 'overdue' : inv.status}">{inv.overdue ? 'overdue' : inv.status}</span>
+						<Icon name="chevron" />
+					</span>
+				</a>
 			{/each}
-		</tbody>
-	</table>
-{/if}
+		</div>
+	{/if}
+</div>
 
 <style>
-	.open {
-		margin-top: -0.5rem;
-		color: #55585c;
+	.link {
+		text-decoration: none;
+		color: inherit;
 	}
-	table {
-		border-collapse: collapse;
-		width: 100%;
-		max-width: 44rem;
-	}
-	th,
-	td {
-		text-align: left;
-		padding: 0.45rem 0.6rem;
-		border-bottom: 1px solid #dddee0;
-		font-size: 0.9rem;
-		white-space: nowrap;
-	}
-	.mono {
-		font-family: ui-monospace, monospace;
-	}
-	.num {
-		text-align: right;
-		font-family: ui-monospace, monospace;
-	}
-	.status {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: #55585c;
-	}
-	.status.paid {
-		color: #1863dc;
-	}
-	.status.cancelled {
-		color: #8a8d90;
-		text-decoration: line-through;
-	}
-	.overdue {
-		color: #b3261e;
+	.list-main {
+		display: flex;
+		flex-direction: column;
 	}
 </style>

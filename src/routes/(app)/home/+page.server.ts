@@ -1,6 +1,6 @@
 import { sql } from 'kysely';
 import { db } from '$lib/server/db';
-import { formatHelsinki, formatUtcDate } from '$lib/server/time';
+import { helsinkiRange, formatUtcDate } from '$lib/server/time';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -66,7 +66,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		admin = { pendingAccounts: accounts.n, pendingFlights: flights.n, unbilled: Number(unbilled.amount).toFixed(2) };
 	}
 
-	const fmtRange = (s: Date, e: Date) => `${formatHelsinki(s).replace(' (Helsinki)', '')} – ${formatHelsinki(e).slice(13, 18)}`;
+	const fmtRange = helsinkiRange;
 
 	return {
 		firstName: me.name.split(' ')[0],

@@ -7,25 +7,21 @@
 </svelte:head>
 
 <main class="err">
-	<p class="code">{page.status}</p>
-	<h1>{page.status === 404 ? 'Page not found' : page.status === 403 ? 'Not allowed' : 'Something went wrong'}</h1>
-	<p>{page.error?.message ?? ''}</p>
-	<p><a href="/home">Back to Home</a></p>
+	<div class="card stack">
+		<p class="eyebrow">{page.status}</p>
+		<h1>{page.status === 404 ? 'Page not found' : page.status === 403 ? 'Not allowed' : 'Something went wrong'}</h1>
+		{#if page.error?.message}<p class="muted">{page.error.message}</p>{/if}
+		<a href="/home" class="btn btn-secondary">Back to Home</a>
+	</div>
 </main>
 
 <style>
 	.err {
-		max-width: 28rem;
-		margin: 4rem auto;
-		font-family: system-ui, sans-serif;
-		text-align: center;
+		max-width: 24rem;
+		margin: 15vh auto 0;
+		padding: 0 20px;
 	}
-	.code {
-		font-family: ui-monospace, monospace;
-		color: #8a8d90;
-		margin: 0;
-	}
-	h1 {
-		margin: 0.2rem 0 0.6rem;
+	.btn {
+		align-self: flex-start;
 	}
 </style>
