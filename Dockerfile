@@ -15,4 +15,7 @@ COPY --from=build /app/package*.json ./
 COPY --from=build /app/db ./db
 RUN npm ci --omit=dev
 EXPOSE 3000
-CMD ["node", "build"]
+# Migrations run on every container start (same network path that already
+# proven to reach Postgres via /healthz). db/migrate.js is idempotent, so
+# a scale-from-zero cold start after the first successful run is a no-op.
+CMD ["sh", "-c", "node db/migrate.js && node build"]

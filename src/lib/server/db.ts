@@ -1,14 +1,35 @@
 import { Pool } from 'pg';
-import { Kysely, PostgresDialect } from 'kysely';
+import { Kysely, PostgresDialect, type Generated, type ColumnType } from 'kysely';
+
+export type UserRole = 'admin' | 'pilot';
+export type UserStatus = 'pending' | 'approved' | 'rejected';
+
+export interface UsersTable {
+	id: Generated<string>;
+	name: string;
+	email: string;
+	password_hash: string | null;
+	role: UserRole;
+	status: UserStatus;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface SessionsTable {
+	token: string;
+	user_id: string;
+	created_at: ColumnType<Date, string | undefined, never>;
+	expires_at: ColumnType<Date, string, string>;
+}
 
 // Table interfaces are added here as migrations introduce them.
-// Phase 00 has no tables of its own yet — this just proves the
-// connection and query-builder wiring works end to end.
 export interface Database {
 	schema_info: {
 		key: string;
 		value: string;
 	};
+	users: UsersTable;
+	sessions: SessionsTable;
 }
 
 const pool = new Pool({
