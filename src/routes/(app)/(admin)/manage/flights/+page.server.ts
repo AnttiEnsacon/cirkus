@@ -1,0 +1,102 @@
+import { fail } from '@sveltejs/kit';
+import { db } from '$lib/server/db';
+import { formatUtc, formatUtcDate } from '$lib/server/time';
+import type { Actions, PageServerLoad } from './$types';
+
+export const load: PageServerLoad = async () => {
+	const rows = await db
+		.selectFrom('flight_log_entries as f')
+		.innerJoin('aircraft', 'aircraft.id', 'f.aircraft_id')
+		.innerJoin('flight_types', 'flight_types.id', 'f.flight_type_id')
+		.innerJoin('users as pic', 'pic.id', 'f.pilot_id')
+		.leftJoin('users as second', 'second.id', 'f.second_pilot_id')
+		.leftJoin('users as approver', 'approver.id', 'f.approved_by')
+		.select([
+			'f.id',
+			'f.block_off_at',
+			'f.block_on_at',
+			'f.hobbs_start',
+			'f.hobbs_end',
+			'f.flight_hours',
+			'f.departure_airport_code',
+			'f.arrival_airport_code',
+			'f.day_landings',
+			'f.night_landings',
+			'f.refuel_liters',
+			'f.oil_added_liters',
+			'f.second_pilot_role',
+			'f.status',
+			'f.remarks',
+			'f.approved_at',
+			'aircraft.tail_number',
+			'flight_types.label as flight_type',
+			'pic.name as pic_name',
+			'second.name as second_name',
+			'approver.name as approver_name'
+		])
+		.orderBy('f.block_off_at', 'desc')
+		.limit(200)
+		.execute();
+
+	const entries = rows.map((r) => ({
+		id: r.id,
+		date: formatUtcDate(new Date(r.block_off_at)),
+		blockOff: formatUtc(new Date(r.block_off_at)).slice(11),
+		blockOn: formatUtc(new Date(r.block_on_at)).slice(11),
+		hobbs: `${r.hobbs_start} → ${r.hobbs_end}`,
+		hours: Number(r.flight_hours).toFixed(2),
+		route: `${r.departure_airport_code} → ${r.arrival_airport_code}`,
+		landings: `${r.day_landings}/${r.night_landings}`,
+		fuel: r.refuel_liters ?? '',
+		oil: r.oil_added_liters ?? '',
+		tail_number: r.tail_number,
+		flight_type: r.flight_type,
+		pic_name: r.pic_name,
+		second: r.second_name ? `${r.second_name} (${r.second_pilot_role === 'instructor' ? 'instr.' : 'backup'})` : '',
+		status: r.status,
+		remarks: r.remarks ?? '',
+		approved: r.approver_name ? `${r.approver_name}, ${formatUtcDate(new Date(r.approved_at!))}` : ''
+	}));
+
+	return {
+		pending: entries.filter((e) => e.status === 'submitted'),
+		others: entries.filter((e) => e.status !== 'submitted')
+	};
+};
+
+export const actions: Actions = {
+	approve: async ({ request, locals }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		if (!id) return fail(400, { error: 'Missing entry id.' });
+		await db
+			.updateTable('flight_log_entries')
+			.set({
+				status: 'approved',
+				approved_by: locals.user!.id,
+				approved_at: new Date().toISOString(),
+				updated_at: new Date().toISOString()
+			})
+			.where('id', '=', id)
+			.where('status', '=', 'submitted')
+			.execute();
+	},
+	unapprove: async ({ request }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		if (!id) return fail(400, { error: 'Missing entry id.' });
+		// Only while not yet billed — billed entries are frozen.
+		await db
+			.updateTable('flight_log_entries')
+			.set({ status: 'submitted', approved_by: null, approved_at: null, updated_at: new Date().toISOString() })
+			.where('id', '=', id)
+			.where('status', '=', 'approved')
+			.execute();
+	},
+	delete: async ({ request }) => {
+		const id = String((await request.formData()).get('id') ?? '');
+		if (!id) return fail(400, { error: 'Missing entry id.' });
+		const entry = await db.selectFrom('flight_log_entries').select('status').where('id', '=', id).executeTakeFirst();
+		if (!entry) return fail(404, { error: 'Entry not found.' });
+		if (entry.status === 'billed') return fail(400, { error: 'Billed entries cannot be deleted.' });
+		await db.deleteFrom('flight_log_entries').where('id', '=', id).execute();
+	}
+};

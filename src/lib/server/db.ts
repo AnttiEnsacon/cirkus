@@ -50,6 +50,51 @@ export interface ReservationsTable {
 	updated_at: ColumnType<Date, string | undefined, string>;
 }
 
+export type FlightLogStatus = 'draft' | 'submitted' | 'approved' | 'billed';
+export type SecondPilotRole = 'instructor' | 'backup_pilot';
+
+export interface AirportsTable {
+	icao_code: string;
+	name: string | null;
+	is_generic: Generated<boolean>;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export interface FlightTypesTable {
+	id: Generated<string>;
+	code: string;
+	label: string;
+	is_active: Generated<boolean>;
+	sort_order: Generated<number>;
+}
+
+export interface FlightLogEntriesTable {
+	id: Generated<string>;
+	reservation_id: string | null;
+	aircraft_id: string;
+	pilot_id: string;
+	second_pilot_id: string | null;
+	second_pilot_role: SecondPilotRole | null;
+	block_off_at: ColumnType<Date, string, string>;
+	block_on_at: ColumnType<Date, string, string>;
+	hobbs_start: ColumnType<string, number | string, number | string>;
+	hobbs_end: ColumnType<string, number | string, number | string>;
+	flight_hours: ColumnType<string, never, never>;
+	departure_airport_code: string;
+	arrival_airport_code: string;
+	day_landings: Generated<number>;
+	night_landings: Generated<number>;
+	refuel_liters: ColumnType<string | null, number | string | null, number | string | null>;
+	oil_added_liters: ColumnType<string | null, number | string | null, number | string | null>;
+	flight_type_id: string;
+	remarks: string | null;
+	status: Generated<FlightLogStatus>;
+	approved_by: string | null;
+	approved_at: ColumnType<Date | null, string | null, string | null>;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
 // Table interfaces are added here as migrations introduce them.
 export interface Database {
 	schema_info: {
@@ -61,6 +106,9 @@ export interface Database {
 	aircraft: AircraftTable;
 	aircraft_owners: AircraftOwnersTable;
 	reservations: ReservationsTable;
+	airports: AirportsTable;
+	flight_types: FlightTypesTable;
+	flight_log_entries: FlightLogEntriesTable;
 }
 
 const pool = new Pool({

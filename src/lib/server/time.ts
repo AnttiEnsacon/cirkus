@@ -69,3 +69,32 @@ export function formatHelsinki(date: Date): string {
 	}).format(date);
 	return `${formatted} (Helsinki)`;
 }
+
+// ---- UTC helpers (logbook side) ------------------------------------------
+// The logbook is always UTC: entered as UTC, shown as UTC. No conversion.
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** Formats a Date as "YYYY-MM-DDTHH:mm" in UTC, for <input type="datetime-local">. */
+export function toUtcInputValue(date: Date): string {
+	return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}T${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}`;
+}
+
+/** Parses a "YYYY-MM-DDTHH:mm" string as UTC. Returns null if malformed. */
+export function fromUtcInputValue(value: string): Date | null {
+	const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+	if (!m) return null;
+	const [, y, mo, d, h, mi] = m.map(Number);
+	const date = new Date(Date.UTC(y, mo - 1, d, h, mi));
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** "2026-09-06 14:02Z" */
+export function formatUtc(date: Date): string {
+	return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())} ${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}Z`;
+}
+
+/** "2026-09-06" (UTC date) */
+export function formatUtcDate(date: Date): string {
+	return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
+}

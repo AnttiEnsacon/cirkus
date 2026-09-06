@@ -9,8 +9,11 @@
 		<nav>
 			<a href="/home">Home</a>
 			<a href="/book">Book</a>
+			<a href="/log">Log</a>
+			<a href="/logbook">Logbook</a>
 			{#if data.user.role === 'admin'}
 				<a href="/manage/approvals">Approvals</a>
+				<a href="/manage/flights">Flights</a>
 				<a href="/manage/fleet">Fleet</a>
 				<a href="/manage/accounts">Accounts</a>
 			{/if}
