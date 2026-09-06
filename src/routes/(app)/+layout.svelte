@@ -8,6 +8,7 @@
 		<span class="brand">Cirkus</span>
 		<nav>
 			<a href="/home">Home</a>
+			<a href="/book">Book</a>
 			{#if data.user.role === 'admin'}
 				<a href="/manage/approvals">Approvals</a>
 				<a href="/manage/fleet">Fleet</a>
