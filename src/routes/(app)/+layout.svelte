@@ -10,6 +10,7 @@
 			<a href="/home">Home</a>
 			{#if data.user.role === 'admin'}
 				<a href="/manage/approvals">Approvals</a>
+				<a href="/manage/fleet">Fleet</a>
 				<a href="/manage/accounts">Accounts</a>
 			{/if}
 		</nav>

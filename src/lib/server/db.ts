@@ -22,6 +22,23 @@ export interface SessionsTable {
 	expires_at: ColumnType<Date, string, string>;
 }
 
+export interface AircraftTable {
+	id: Generated<string>;
+	tail_number: string;
+	type: string;
+	seats: number;
+	member_rate_per_hour: ColumnType<string, number | string, number | string>;
+	guest_rate_per_hour: ColumnType<string, number | string, number | string>;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface AircraftOwnersTable {
+	aircraft_id: string;
+	user_id: string;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
 // Table interfaces are added here as migrations introduce them.
 export interface Database {
 	schema_info: {
@@ -30,6 +47,8 @@ export interface Database {
 	};
 	users: UsersTable;
 	sessions: SessionsTable;
+	aircraft: AircraftTable;
+	aircraft_owners: AircraftOwnersTable;
 }
 
 const pool = new Pool({
