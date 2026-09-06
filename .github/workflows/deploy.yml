@@ -21,6 +21,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Fail fast on type errors here, in Actions, rather than discovering
+      # them as a crash-looping container after the deploy step.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install and type-check
+        run: |
+          npm ci
+          npm run check
+
       - name: Compute lowercase image name
         # ghcr.io requires an all-lowercase path; github.repository preserves case.
         run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"

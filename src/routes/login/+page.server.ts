@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { verifyPassword, createSession, SESSION_COOKIE } from '$lib/server/auth';
+import { verifyPassword, createSession, purgeExpiredSessions, SESSION_COOKIE } from '$lib/server/auth';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(303, '/home');
@@ -50,10 +51,11 @@ export const actions: Actions = {
 		}
 
 		const { token, expiresAt } = await createSession(user.id);
+		await purgeExpiredSessions();
 		cookies.set(SESSION_COOKIE, token, {
 			path: '/',
 			httpOnly: true,
-			secure: true,
+			secure: !dev,
 			sameSite: 'lax',
 			expires: expiresAt
 		});

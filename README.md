@@ -1,42 +1,142 @@
-# sv
+# Cirkus
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Reservation, logbook and billing system for **KML Aviation Oy** — one aircraft
+(OH-KML, Cirrus SR20) co-owned by eight pilots.
 
-## Creating a project
+- **Live:** the Container App's URL (see *Operations → Find the URL*)
+- **Stack:** SvelteKit (TypeScript) + Kysely over `pg`, Postgres on Azure Database
+  for PostgreSQL Flexible Server, Docker image on ghcr.io, running on Azure
+  Container Apps (consumption plan, scales to zero).
+- **Design references:** the data model, build plan and UI mock-up live as
+  Claude artifacts (links in the project chat).
 
-If you're seeing this, you've probably already done this step. Congrats!
+## What it does
 
-```sh
-# create a new project
-npx sv create my-app
+| Area | Who | Where |
+|---|---|---|
+| Register, log in, approval of new accounts | everyone / admins | `/register`, `/login`, `/manage/approvals` |
+| Accounts: edit name/email/role/status, set passwords | admins | `/manage/accounts` |
+| Fleet: aircraft, seats, member & guest hourly rates, co-owners | admins | `/manage/fleet` |
+| Book the aircraft (Helsinki local time, no double-booking) | pilots | `/book` |
+| Log a flight (UTC, Hobbs-based), personal logbook | pilots | `/log`, `/logbook` |
+| Approve logged flights | admins | `/manage/flights` |
+| Create invoices on demand, mark paid, cancel | admins | `/manage/invoices` |
+| See own invoices, print one | pilots | `/invoices` |
+
+Out of scope for this MVP, on purpose: third-party customers and the guest
+rate, scheduled/automatic invoicing, VAT lines, fuel credits, email (password
+resets are done by an admin by hand), owner-tier permissions.
+
+## Time zones
+
+Everything is stored in UTC. **Reservations** are shown and entered in
+Helsinki local time (`src/lib/server/time.ts` does the conversion, DST
+included). **Logbook and flight log** are UTC everywhere, by design.
+
+## Local development
+
+```powershell
+npm install
+Copy-Item .env.example .env      # then fill in DATABASE_URL
+$env:DATABASE_URL = (Get-Content .env | Select-String '^DATABASE_URL=').ToString().Split('=',2)[1]
+node db/migrate.js               # applies db/migrations/*.sql not yet applied
+npm run dev                      # http://localhost:5173
+npm run check                    # type-check (CI runs this too)
 ```
 
-To recreate this project with the same configuration:
+To reach the Azure database from your own machine the server firewall needs
+your IP (see *Azure gotchas*). The session cookie is only `secure` in
+production, so plain `http://localhost` logins work.
 
-```sh
-# recreate this project
-npx sv@0.17.0 create --template minimal --types ts --add eslint prettier sveltekit-adapter="adapter:node" --no-download-check --install npm .
+## Deploying
+
+Push to `main`. `.github/workflows/deploy.yml` then:
+
+1. `npm ci && npm run check` — a type error stops here.
+2. Builds the Docker image and pushes it to `ghcr.io/<owner>/cirkus:<sha>`
+   (the package is public so Container Apps can pull it without a stored token).
+3. Logs in to Azure with OIDC (no secret stored — a federated credential on
+   the `cirkus-gha-deploy` app registration trusts this repo's `main` branch).
+4. `az containerapp up` with the new image, sets the `database-url` secret,
+   then `az containerapp update --set-env-vars ... --revision-suffix r<run>-<attempt>`
+   so **every run provisions a fresh revision**, including re-runs.
+
+Migrations run **on container start** (`Dockerfile` `CMD`), against the same
+`DATABASE_URL` the app uses. `db/migrate.js` is idempotent: it records applied
+files in `schema_migrations` and skips them next time. A failing migration
+makes the container exit → the revision never becomes healthy → Azure keeps
+serving the previous healthy revision. Check the logs (below) if a deploy goes
+green in Actions but the app doesn't change.
+
+### GitHub secrets
+
+`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (OIDC login) and
+`DATABASE_URL` (`postgresql://user:pass@ensacon-ts-pg.postgres.database.azure.com:5432/cirkus?sslmode=verify-full`).
+
+## Azure gotchas (each of these cost us an afternoon)
+
+- **Extensions are allow-listed per server.** A fresh Flexible Server has an
+  empty `azure.extensions` list, so `create extension` fails for a normal user
+  with *"not allow-listed"*. `btree_gist` (needed by the reservation overlap
+  constraint) is allow-listed on `ensacon-ts-pg`. Any future migration that
+  needs an extension:
+  `az postgres flexible-server parameter set --resource-group ensacon-ts-rg --server-name ensacon-ts-pg --name azure.extensions --value btree_gist,<new>`
+  (the value *replaces* the list). Verify with `show azure.extensions;`.
+- **Firewall.** "Allow Azure services" (rule `AllowAzureServices`, 0.0.0.0) lets
+  the Container App in. Your own machine needs its own rule
+  (`AllowMyIP`); GitHub Actions runners are *not* covered, which is why
+  migrations run in the container rather than in CI.
+- **Identical image tag = no new revision.** Re-running a workflow used to be a
+  no-op; the `--revision-suffix` fixes that.
+- **Scale-to-zero means no replica to `exec` into or tail** when idle. Load the
+  app once first, or read Log Analytics (below).
+- **GitHub OIDC subjects for new repos include numeric IDs**
+  (`repo:AnttiEnsacon@46528077/cirkus@1359212099:ref:refs/heads/main`); the
+  federated credential's subject must match that exact string.
+
+## Operations
+
+```powershell
+# Find the URL
+az containerapp show --name cirkus --resource-group rg-cirkus --query properties.configuration.ingress.fqdn -o tsv
+
+# Revisions: the newest should be Healthy with a replica
+az containerapp revision list --name cirkus --resource-group rg-cirkus -o table
+
+# Live logs (needs a running replica) …
+az containerapp logs show --name cirkus --resource-group rg-cirkus --tail 100
+# … or historical console logs from Log Analytics
+$ws = az containerapp env show --name cae-cirkus --resource-group rg-cirkus --query "properties.appLogsConfiguration.logAnalyticsConfiguration.customerId" -o tsv
+az monitor log-analytics query --workspace $ws --analytics-query "ContainerAppConsoleLogs_CL | where ContainerAppName_s == 'cirkus' | order by TimeGenerated desc | take 100 | project TimeGenerated, RevisionName_s, Log_s" -o table
+
+# Health (also proves the DB connection)
+curl https://<fqdn>/healthz        # {"status":"ok","db":"connected"}
+
+# Backups: Flexible Server takes automatic daily backups; check retention
+az postgres flexible-server show --resource-group ensacon-ts-rg --name ensacon-ts-pg --query "backup" -o json
 ```
 
-## Developing
+### Day-to-day admin
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+- **New member:** they register → you approve under *Approvals* → they log in.
+- **Forgotten password:** *Accounts → Set password*, tell them the temporary
+  one. Break-glass if no admin can log in at all:
+  `node db/set-password.js someone@kmlaviation.fi 'NewPassword123'`
+  (needs `DATABASE_URL` and firewall access from your machine).
+- **Billing run:** *Flights* → approve what's been logged → *Billing* →
+  *Create all*. Each pilot gets one invoice for everything approved and
+  unbilled, at the member rate in force that day; 14-day terms. Mistake?
+  *Cancel* puts the flights back, fix the flight, create again — the number
+  advances, never reused.
+- **Rate change:** *Fleet*. Affects invoices created from then on only.
 
-```sh
-npm run dev
+## Repo layout
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
+db/migrations/         numbered SQL, applied in order by db/migrate.js
+db/set-password.js     break-glass password set
+src/lib/server/        db.ts (Kysely types), auth.ts, time.ts, invoicing.ts
+src/routes/            login, register, logout, healthz
+src/routes/(app)/      everything behind login: home, book, log, logbook, invoices
+src/routes/(app)/(admin)/manage/   approvals, accounts, fleet, flights, invoices
 ```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

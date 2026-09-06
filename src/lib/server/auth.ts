@@ -37,6 +37,11 @@ export async function createSession(userId: string): Promise<{ token: string; ex
 	return { token, expiresAt };
 }
 
+/** Housekeeping: drops sessions past their expiry. Called on login; cheap enough not to need a scheduler. */
+export async function purgeExpiredSessions(): Promise<void> {
+	await db.deleteFrom('sessions').where('expires_at', '<', new Date()).execute();
+}
+
 export async function invalidateSession(token: string): Promise<void> {
 	await db.deleteFrom('sessions').where('token', '=', token).execute();
 }

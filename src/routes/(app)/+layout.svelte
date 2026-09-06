@@ -37,7 +37,8 @@
 	header {
 		display: flex;
 		align-items: center;
-		gap: 1.5rem;
+		gap: 0.75rem 1.5rem;
+		flex-wrap: wrap;
 		padding: 0.75rem 1.25rem;
 		border-bottom: 1px solid #dddee0;
 	}
@@ -46,8 +47,9 @@
 	}
 	nav {
 		display: flex;
-		gap: 1rem;
+		gap: 0.4rem 1rem;
 		flex: 1;
+		flex-wrap: wrap;
 	}
 	nav a {
 		color: inherit;
@@ -64,6 +66,11 @@
 	}
 	.content {
 		padding: 1.5rem;
+	}
+	@media (max-width: 600px) {
+		.content {
+			padding: 1rem;
+		}
 	}
 	@media print {
 		header {
