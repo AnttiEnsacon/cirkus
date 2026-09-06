@@ -1,13 +1,17 @@
 -- Phase 03: reservations.
 -- btree_gist adds GiST index support for plain equality (uuid here),
 -- needed so the exclusion constraint below can combine "same aircraft"
--- with "overlapping time range" in a single index. Unlike pgcrypto,
--- btree_gist is a plain index-support extension with no special
--- permissions implications, and is listed as supported on every Postgres
--- version Azure Flexible Server offers — if this line ever fails the
--- same way pgcrypto did, allow-list it first:
+-- with "overlapping time range" in a single index.
+--
+-- AZURE NOTE: Azure Database for PostgreSQL Flexible Server ships with an
+-- empty extension allow-list, so this line fails with "extension
+-- "btree_gist" is not allow-listed" on a fresh server. It is a one-time
+-- server setting (done for KML Aviation's server on 2026-09-06):
 --   az postgres flexible-server parameter set --resource-group <rg> \
 --     --server-name <server> --name azure.extensions --value btree_gist
+-- (the value replaces the whole list — include any extensions already
+-- listed, comma-separated). Any future migration that reaches for an
+-- extension needs the same step first.
 create extension if not exists btree_gist;
 
 create table reservations (
