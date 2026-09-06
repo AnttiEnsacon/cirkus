@@ -1,0 +1,63 @@
+name: Deploy Cirkus
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write   # required for Azure OIDC login
+  contents: read
+  packages: write    # required to push to ghcr.io
+
+env:
+  REGISTRY: ghcr.io
+  RESOURCE_GROUP: rg-cirkus
+  CONTAINERAPPS_ENV: cae-cirkus
+  CONTAINERAPP_NAME: cirkus
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute lowercase image name
+        # ghcr.io requires an all-lowercase path; github.repository preserves case.
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Container Apps
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az containerapp up \
+              --name ${{ env.CONTAINERAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --environment ${{ env.CONTAINERAPPS_ENV }} \
+              --image ${{ env.IMAGE }}:${{ github.sha }} \
+              --target-port 3000 \
+              --ingress external \
+              --secrets database-url=${{ secrets.DATABASE_URL }} \
+              --env-vars DATABASE_URL=secretref:database-url
