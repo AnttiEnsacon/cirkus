@@ -38,7 +38,7 @@
 	<aside class="sidebar" class:dark={onAdminPage}>
 		<a class="brand" href="/home">
 			<img src="/cirkus-icon.png" alt="" />
-			<span>CIRKUS</span>
+			<img class="wordmark" src="/cirkus-wordmark.png" alt="Cirkus" />
 		</a>
 		<nav class="nav">
 			{#each pilotNav as item (item.href)}
@@ -69,7 +69,7 @@
 
 	<div class="main">
 		<header class="topbar">
-			<a class="brand" href="/home"><img src="/cirkus-icon.png" alt="" /><span>CIRKUS</span></a>
+			<a class="brand" href="/home"><img src="/cirkus-icon.png" alt="" /><img class="wordmark" src="/cirkus-wordmark.png" alt="Cirkus" /></a>
 			<a class="avatar" href="/more" aria-label="More">{initials}</a>
 		</header>
 
@@ -117,10 +117,9 @@
 		height: auto;
 		display: block;
 	}
-	.brand span {
-		font-weight: 800;
-		font-size: 15px;
-		letter-spacing: 0.02em;
+	.brand .wordmark {
+		width: auto;
+		height: 11px;
 	}
 
 	/* phone top bar */
@@ -273,8 +272,8 @@
 		.sidebar.dark .brand img {
 			filter: invert(1);
 		}
-		.sidebar.dark .brand span {
-			color: #fff;
+		.sidebar.dark .brand .wordmark {
+			filter: invert(1);
 		}
 		.sidebar.dark .nav-label {
 			color: #767c86;
