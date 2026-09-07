@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 </script>
@@ -14,7 +15,24 @@
 
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
 	{#if form?.passwordSetFor}<p class="alert notice">Password updated.</p>{/if}
+	{#if form?.added}<p class="alert notice">{form.added} added — they can log in with the temporary password now.</p>{/if}
 
+	<form method="POST" action="?/add" class="card stack">
+		<p class="section-label">Add a member</p>
+		<div class="fields">
+			<label class="field"><span>Name</span><input name="name" required autocomplete="off" /></label>
+			<label class="field"><span>Email</span><input name="email" type="email" required autocomplete="off" /></label>
+			<label class="field">
+				<span>Role</span>
+				<select name="role"><option value="pilot">pilot</option><option value="admin">admin</option></select>
+			</label>
+			<label class="field"><span>Temporary password</span><input name="password" type="password" minlength="8" required autocomplete="new-password" /></label>
+		</div>
+		<button type="submit" class="btn sm"><Icon name="plus" size={16} /> Add member</button>
+		<p class="hint">Added members are approved straight away — tell them the temporary password and ask them to change it. Someone who registers themselves instead shows up under Approvals.</p>
+	</form>
+
+	<p class="section-label">Members</p>
 	<div class="stack">
 		{#each data.users as person (person.id)}
 			<div class="card stack">
@@ -72,5 +90,8 @@
 	}
 	.pw {
 		grid-template-columns: minmax(180px, 2fr) minmax(120px, 1fr);
+	}
+	.btn {
+		align-self: flex-start;
 	}
 </style>

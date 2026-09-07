@@ -17,6 +17,14 @@
 		</div>
 	</div>
 
+	<div class="card tight">
+		<a href="/password" class="list-item link">
+			<span class="list-icon"><Icon name="shield" /></span>
+			<span class="list-main"><span class="list-title">Change password</span></span>
+			<Icon name="chevron" />
+		</a>
+	</div>
+
 	<p class="section-label">Billing</p>
 	<div class="card tight">
 		<a href="/invoices" class="list-item link">

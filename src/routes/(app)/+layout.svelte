@@ -58,10 +58,10 @@
 		</nav>
 		<div class="foot">
 			<span class="avatar">{initials}</span>
-			<span class="who">
+			<a class="who" href="/password" title="Change password">
 				<span class="name">{data.user.name}</span>
 				<span class="role">{data.user.role}</span>
-			</span>
+			</a>
 			<form method="POST" action="/logout">
 				<button type="submit" class="iconbtn" title="Log out" aria-label="Log out"><Icon name="logout" size={18} /></button>
 			</form>
@@ -239,6 +239,8 @@
 			flex-direction: column;
 			min-width: 0;
 			flex: 1 1 auto;
+			text-decoration: none;
+			color: inherit;
 		}
 		.name {
 			font-weight: 700;

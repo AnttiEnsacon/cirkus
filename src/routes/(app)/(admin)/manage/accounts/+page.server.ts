@@ -17,6 +17,36 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
+	add: async ({ request }) => {
+		const form = await request.formData();
+		const name = String(form.get('name') ?? '').trim();
+		const email = String(form.get('email') ?? '')
+			.trim()
+			.toLowerCase();
+		const role = String(form.get('role') ?? 'pilot');
+		const password = String(form.get('password') ?? '');
+
+		if (!name || !email) return fail(400, { error: 'Name and email are required.' });
+		if (role !== 'admin' && role !== 'pilot') return fail(400, { error: 'Invalid role.' });
+		if (password.length < 8) return fail(400, { error: 'Temporary password must be at least 8 characters.' });
+
+		const existing = await db.selectFrom('users').select('id').where('email', '=', email).executeTakeFirst();
+		if (existing) return fail(400, { error: `An account with ${email} already exists.` });
+
+		await db
+			.insertInto('users')
+			.values({
+				name,
+				email,
+				role: role as 'admin' | 'pilot',
+				status: 'approved',
+				password_hash: await hashPassword(password)
+			})
+			.execute();
+
+		return { added: name };
+	},
+
 	update: async ({ request }) => {
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '');
