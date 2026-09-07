@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 
 # Leftover Azure CLI parameter files
 cred.json
+
+# Files the Claude desktop app drops into the project folder
+Claude outputs/
