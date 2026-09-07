@@ -85,8 +85,8 @@ export const actions: Actions = {
 
 		const aircraft_id = str('aircraft_id');
 		const reservation_id = str('reservation_id') || null;
-		const block_off_at = fromUtcInputValue(str('block_off_at'));
-		const block_on_at = fromUtcInputValue(str('block_on_at'));
+		const block_off_at = fromUtcInputValue(`${str('block_off_date')}T${str('block_off_time')}`);
+		const block_on_at = fromUtcInputValue(`${str('block_on_date')}T${str('block_on_time')}`);
 		const hobbs_start = num('hobbs_start');
 		const hobbs_end = num('hobbs_end');
 		const departure = str('departure').toUpperCase();
@@ -104,7 +104,7 @@ export const actions: Actions = {
 		const bad = (error: string) => fail(400, { error, values });
 
 		if (!aircraft_id) return bad('Choose an aircraft.');
-		if (!block_off_at || !block_on_at) return bad('Enter off-block and on-block times (UTC).');
+		if (!block_off_at || !block_on_at) return bad('Enter off-block and on-block dates and times (UTC).');
 		if (block_on_at <= block_off_at) return bad('On-block must be after off-block.');
 		if (hobbs_start === null || hobbs_end === null || !Number.isFinite(hobbs_start) || !Number.isFinite(hobbs_end)) {
 			return bad('Enter both Hobbs readings.');

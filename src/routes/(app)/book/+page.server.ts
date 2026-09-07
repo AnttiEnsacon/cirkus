@@ -130,12 +130,12 @@ export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		const form = await request.formData();
 		const aircraft_id = String(form.get('aircraft_id') ?? '');
-		const startsRaw = String(form.get('starts_at') ?? '');
-		const endsRaw = String(form.get('ends_at') ?? '');
+		const startsRaw = `${form.get('starts_date') ?? ''}T${form.get('starts_time') ?? ''}`;
+		const endsRaw = `${form.get('ends_date') ?? ''}T${form.get('ends_time') ?? ''}`;
 		const notes = String(form.get('notes') ?? '').trim() || null;
 
-		if (!aircraft_id || !startsRaw || !endsRaw) {
-			return fail(400, { error: 'Choose an aircraft and a start and end time.' });
+		if (!aircraft_id || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsRaw) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsRaw)) {
+			return fail(400, { error: 'Choose an aircraft and a start and end date and time.' });
 		}
 
 		const starts_at = fromHelsinkiInputValue(startsRaw);

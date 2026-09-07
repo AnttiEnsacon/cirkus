@@ -385,6 +385,23 @@ a.card:hover {
 	width: 100%;
 	min-width: 0;
 }
+.field input[type='date'],
+.field input[type='time'] {
+	-webkit-appearance: none;
+	appearance: none;
+	min-height: 44px;
+	display: block;
+}
+.field input[type='date']::-webkit-date-and-time-value,
+.field input[type='time']::-webkit-date-and-time-value {
+	text-align: left;
+}
+/* date + time pair on one line: date wider, time narrower */
+.dt {
+	display: grid;
+	grid-template-columns: 3fr 2fr;
+	gap: 8px;
+}
 .field input.mono {
 	font-family: var(--mono);
 	letter-spacing: 0.04em;

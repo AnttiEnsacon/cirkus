@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
@@ -7,19 +8,60 @@
 	const hours = $derived(Array.from({ length: data.hourEnd - data.hourStart }, (_, i) => data.hourStart + i));
 	const pad = (n: number) => String(n).padStart(2, '0');
 
-	// The form's times — set by typing, or by clicking a free slot. Initial
+	// The form's times — set by picking, or by clicking a free slot. Initial
 	// values only, on purpose: the selection survives paging between weeks.
 	// svelte-ignore state_referenced_locally
-	let startsAt = $state(data.defaultStart);
+	let startDate = $state(data.defaultStart.slice(0, 10));
 	// svelte-ignore state_referenced_locally
-	let endsAt = $state(data.defaultEnd);
+	let startTime = $state(data.defaultStart.slice(11, 16));
+	// svelte-ignore state_referenced_locally
+	let endDate = $state(data.defaultEnd.slice(0, 10));
+	// svelte-ignore state_referenced_locally
+	let endTime = $state(data.defaultEnd.slice(11, 16));
 	// svelte-ignore state_referenced_locally
 	let dayIdx = $state(data.todayIndex >= 0 ? data.todayIndex : 0); // phone: which day is open
 
+	const startsAt = $derived(`${startDate}T${startTime}`);
+	const endsAt = $derived(`${endDate}T${endTime}`);
+
+	// Times offered in the dropdowns: 15-minute steps across the calendar's hours.
+	const timeOptions = $derived.by(() => {
+		const out: string[] = [];
+		for (let h = data.hourStart; h < data.hourEnd; h++) for (const m of [0, 15, 30, 45]) out.push(`${pad(h)}:${pad(m)}`);
+		out.push(`${pad(data.hourEnd)}:00`);
+		return out;
+	});
+
+	// Wall-clock minutes since epoch, for durations (no time zone involved).
+	const wall = (ymd: string, hm: string) => Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8, 10), +hm.slice(0, 2), +hm.slice(3, 5)) / 60000;
+	function setEndFromDuration(durationMin: number) {
+		const end = new Date((wall(startDate, startTime) + durationMin) * 60000);
+		const ymd = end.toISOString().slice(0, 10);
+		let hm = end.toISOString().slice(11, 16);
+		// keep the end inside the calendar's hours on the same day
+		if (ymd === startDate && hm > `${pad(data.hourEnd)}:00`) hm = `${pad(data.hourEnd)}:00`;
+		endDate = ymd;
+		endTime = hm;
+	}
+	// When the start moves, the end follows so the duration stays the same.
+	// svelte-ignore state_referenced_locally
+	let lastStart = { d: startDate, t: startTime };
+	$effect(() => {
+		const d = startDate, t = startTime;
+		untrack(() => {
+			if (d === lastStart.d && t === lastStart.t) return;
+			const dur = wall(endDate, endTime) - wall(lastStart.d, lastStart.t);
+			lastStart = { d, t };
+			if (dur > 0) setEndFromDuration(dur);
+		});
+	});
+
 	function pick(ymd: string, hour: number) {
 		const twoFree = hour + 2 <= data.hourEnd && !isBusy(dayOf(ymd), hour + 1);
-		startsAt = `${ymd}T${pad(hour)}:00`;
-		endsAt = `${ymd}T${pad(hour + (twoFree ? 2 : 1))}:00`;
+		lastStart = { d: ymd, t: `${pad(hour)}:00` };
+		startDate = ymd;
+		startTime = `${pad(hour)}:00`;
+		setEndFromDuration((twoFree ? 2 : 1) * 60);
 	}
 	const dayOf = (ymd: string) => data.days.findIndex((d) => d.ymd === ymd);
 	function isBusy(day: number, hour: number): boolean {
@@ -163,8 +205,24 @@
 				</div>
 			</div>
 			<div class="card stack">
-				<label class="field"><span>Starts</span><input name="starts_at" type="datetime-local" bind:value={startsAt} required /></label>
-				<label class="field"><span>Ends</span><input name="ends_at" type="datetime-local" bind:value={endsAt} required /></label>
+				<div class="field">
+					<span>Starts</span>
+					<div class="dt">
+						<input name="starts_date" type="date" bind:value={startDate} required aria-label="Start date" />
+						<select name="starts_time" bind:value={startTime} required aria-label="Start time">
+							{#each timeOptions as tOpt (tOpt)}<option value={tOpt}>{tOpt}</option>{/each}
+						</select>
+					</div>
+				</div>
+				<div class="field">
+					<span>Ends</span>
+					<div class="dt">
+						<input name="ends_date" type="date" bind:value={endDate} required aria-label="End date" />
+						<select name="ends_time" bind:value={endTime} required aria-label="End time">
+							{#each timeOptions as tOpt (tOpt)}<option value={tOpt}>{tOpt}</option>{/each}
+						</select>
+					</div>
+				</div>
 				<label class="field"><span>Notes (optional)</span><input name="notes" type="text" placeholder="e.g. local flight, EFHK–EFTU" /></label>
 				<button type="submit" class="btn block"><Icon name="calendar" size={18} /> Confirm booking</button>
 			</div>

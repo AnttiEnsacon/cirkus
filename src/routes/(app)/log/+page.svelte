@@ -1,10 +1,32 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 
 	const v = (key: string, fallback = '') => String(form?.values?.[key] ?? fallback);
 	const firstAircraft = $derived(data.aircraft[0]);
+
+	// Off/on-block as date + time pairs (UTC). The on-block date follows the
+	// off-block date as long as the two were the same — a normal same-day
+	// flight means picking only two times.
+	// svelte-ignore state_referenced_locally
+	let offDate = $state(v('block_off_date', data.defaultBlockOff.slice(0, 10)));
+	// svelte-ignore state_referenced_locally
+	let offTime = $state(v('block_off_time', data.defaultBlockOff.slice(11, 16)));
+	// svelte-ignore state_referenced_locally
+	let onDate = $state(v('block_on_date', data.defaultBlockOn.slice(0, 10)));
+	// svelte-ignore state_referenced_locally
+	let onTime = $state(v('block_on_time', data.defaultBlockOn.slice(11, 16)));
+	// svelte-ignore state_referenced_locally
+	let lastOffDate = offDate;
+	$effect(() => {
+		const d = offDate;
+		untrack(() => {
+			if (onDate === lastOffDate) onDate = d;
+			lastOffDate = d;
+		});
+	});
 </script>
 
 <svelte:head>
@@ -46,15 +68,21 @@
 
 		<div class="card stack">
 			<p class="section-label">Times &amp; Hobbs</p>
+			<div class="field">
+				<span>Off-block (UTC)</span>
+				<div class="dt">
+					<input name="block_off_date" type="date" bind:value={offDate} required aria-label="Off-block date" />
+					<input name="block_off_time" type="time" bind:value={offTime} required aria-label="Off-block time" />
+				</div>
+			</div>
+			<div class="field">
+				<span>On-block (UTC)</span>
+				<div class="dt">
+					<input name="block_on_date" type="date" bind:value={onDate} required aria-label="On-block date" />
+					<input name="block_on_time" type="time" bind:value={onTime} required aria-label="On-block time" />
+				</div>
+			</div>
 			<div class="grid2">
-				<label class="field">
-					<span>Off-block (UTC)</span>
-					<input name="block_off_at" type="datetime-local" value={v('block_off_at', data.defaultBlockOff)} required />
-				</label>
-				<label class="field">
-					<span>On-block (UTC)</span>
-					<input name="block_on_at" type="datetime-local" value={v('block_on_at', data.defaultBlockOn)} required />
-				</label>
 				<label class="field">
 					<span>Hobbs start</span>
 					<input name="hobbs_start" class="mono" type="number" step="0.1" min="0" value={v('hobbs_start', firstAircraft?.last_hobbs ?? '')} required />
