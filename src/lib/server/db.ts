@@ -64,6 +64,8 @@ export interface FlightTypesTable {
 	id: Generated<string>;
 	code: string;
 	label: string;
+	account: string | null;
+	taxable: Generated<boolean>;
 	is_active: Generated<boolean>;
 	sort_order: Generated<number>;
 }
@@ -77,11 +79,12 @@ export interface FlightLogEntriesTable {
 	second_pilot_role: SecondPilotRole | null;
 	block_off_at: ColumnType<Date, string, string>;
 	block_on_at: ColumnType<Date, string, string>;
-	hobbs_start: ColumnType<string, number | string, number | string>;
-	hobbs_end: ColumnType<string, number | string, number | string>;
+	tacho_start: ColumnType<string, number | string, number | string>;
+	tacho_end: ColumnType<string, number | string, number | string>;
 	flight_hours: ColumnType<string, never, never>;
 	departure_airport_code: string;
 	arrival_airport_code: string;
+	persons_on_board: Generated<number>;
 	day_landings: Generated<number>;
 	night_landings: Generated<number>;
 	refuel_liters: ColumnType<string | null, number | string | null, number | string | null>;

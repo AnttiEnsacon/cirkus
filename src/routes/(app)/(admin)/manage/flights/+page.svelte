@@ -27,8 +27,8 @@
 								<td class="mono">{e.date}<span class="sub">{e.blockOff} – {e.blockOn}</span></td>
 								<td>{e.pic_name}{#if e.second}<span class="sub" style="font-family:var(--sans)">+ {e.second}</span>{/if}</td>
 								<td><span class="tailnum">{e.tail_number}</span><span class="sub">{e.route}</span></td>
-								<td class="num">{e.hours}<span class="sub">{e.hobbs}</span></td>
-								<td class="wrap">{e.flight_type}<span class="sub">ldg {e.landings}{e.fuel !== '' ? ` · fuel ${e.fuel} L` : ''}{e.oil !== '' ? ` · oil ${e.oil} L` : ''}</span>{#if e.remarks}<span class="sub" style="font-family:var(--sans)">{e.remarks}</span>{/if}</td>
+								<td class="num">{e.hours}<span class="sub">{e.tacho}</span></td>
+								<td class="wrap">{e.flight_type}<span class="sub">POB {e.pob} · ldg {e.landings}{e.fuel !== '' ? ` · fuel ${e.fuel} L` : ''}{e.oil !== '' ? ` · oil ${e.oil} L` : ''}</span>{#if e.remarks}<span class="sub" style="font-family:var(--sans)">{e.remarks}</span>{/if}</td>
 								<td><span class="status {e.status}">{e.status}</span>{#if e.approved}<span class="sub" style="font-family:var(--sans)">{e.approved}</span>{/if}</td>
 								<td class="actions">
 									{#if pending}

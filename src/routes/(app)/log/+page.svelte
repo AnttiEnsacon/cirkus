@@ -49,7 +49,7 @@
 					<select name="aircraft_id" required>
 						{#each data.aircraft as plane (plane.id)}
 							<option value={plane.id} selected={v('aircraft_id', firstAircraft?.id ?? '') === plane.id}>
-								{plane.tail_number} — {plane.type}{plane.last_hobbs ? ` (last Hobbs ${plane.last_hobbs})` : ''}
+								{plane.tail_number} — {plane.type}{plane.last_tacho ? ` (last Tacho ${plane.last_tacho})` : ''}
 							</option>
 						{/each}
 					</select>
@@ -67,7 +67,7 @@
 		</div>
 
 		<div class="card stack">
-			<p class="section-label">Times &amp; Hobbs</p>
+			<p class="section-label">Times &amp; Tacho</p>
 			<div class="field">
 				<span>Off-block (UTC)</span>
 				<div class="dt">
@@ -84,12 +84,12 @@
 			</div>
 			<div class="grid2">
 				<label class="field">
-					<span>Hobbs start</span>
-					<input name="hobbs_start" class="mono" type="number" step="0.1" min="0" value={v('hobbs_start', firstAircraft?.last_hobbs ?? '')} required />
+					<span>Tacho start</span>
+					<input name="tacho_start" class="mono" type="number" step="0.1" min="0" value={v('tacho_start', firstAircraft?.last_tacho ?? '')} required />
 				</label>
 				<label class="field">
-					<span>Hobbs end</span>
-					<input name="hobbs_end" class="mono" type="number" step="0.1" min="0" value={v('hobbs_end')} required />
+					<span>Tacho end</span>
+					<input name="tacho_end" class="mono" type="number" step="0.1" min="0" value={v('tacho_end')} required />
 				</label>
 			</div>
 		</div>
@@ -141,9 +141,13 @@
 					<span>Flight type</span>
 					<select name="flight_type_id" required>
 						{#each data.flightTypes as ft (ft.id)}
-							<option value={ft.id} selected={v('flight_type_id', data.flightTypes[0]?.id ?? '') === ft.id}>{ft.label}</option>
+							<option value={ft.id} selected={v('flight_type_id', data.flightTypes[0]?.id ?? '') === ft.id}>{ft.code} · {ft.label}</option>
 						{/each}
 					</select>
+				</label>
+				<label class="field">
+					<span>Persons on board</span>
+					<input name="persons_on_board" type="number" min="1" max={firstAircraft?.seats ?? 9} step="1" value={v('persons_on_board', '1')} required />
 				</label>
 			</div>
 		</div>

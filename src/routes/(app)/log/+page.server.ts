@@ -15,18 +15,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 			(eb) =>
 				eb
 					.selectFrom('flight_log_entries')
-					.select(['aircraft_id', sql<string>`max(hobbs_end)`.as('last_hobbs')])
+					.select(['aircraft_id', sql<string>`max(tacho_end)`.as('last_tacho')])
 					.groupBy('aircraft_id')
 					.as('last'),
 			(join) => join.onRef('last.aircraft_id', '=', 'aircraft.id')
 		)
-		.select(['aircraft.id', 'aircraft.tail_number', 'aircraft.type', 'last.last_hobbs'])
+		.select(['aircraft.id', 'aircraft.tail_number', 'aircraft.type', 'aircraft.seats', 'last.last_tacho'])
 		.orderBy('aircraft.tail_number', 'asc')
 		.execute();
 
 	const flightTypes = await db
 		.selectFrom('flight_types')
-		.select(['id', 'code', 'label'])
+		.select(['id', 'code', 'label', 'taxable'])
 		.where('is_active', '=', true)
 		.orderBy('sort_order', 'asc')
 		.execute();
@@ -87,8 +87,8 @@ export const actions: Actions = {
 		const reservation_id = str('reservation_id') || null;
 		const block_off_at = fromUtcInputValue(`${str('block_off_date')}T${str('block_off_time')}`);
 		const block_on_at = fromUtcInputValue(`${str('block_on_date')}T${str('block_on_time')}`);
-		const hobbs_start = num('hobbs_start');
-		const hobbs_end = num('hobbs_end');
+		const tacho_start = num('tacho_start');
+		const tacho_end = num('tacho_end');
 		const departure = str('departure').toUpperCase();
 		const arrival = str('arrival').toUpperCase();
 		const day_landings = num('day_landings') ?? 0;
@@ -96,6 +96,7 @@ export const actions: Actions = {
 		const refuel_liters = num('refuel_liters');
 		const oil_added_liters = num('oil_added_liters');
 		const flight_type_id = str('flight_type_id');
+		const persons_on_board = num('persons_on_board') ?? 1;
 		const second_pilot_id = str('second_pilot_id') || null;
 		const second_pilot_role = (str('second_pilot_role') || null) as SecondPilotRole | null;
 		const remarks = str('remarks') || null;
@@ -106,10 +107,10 @@ export const actions: Actions = {
 		if (!aircraft_id) return bad('Choose an aircraft.');
 		if (!block_off_at || !block_on_at) return bad('Enter off-block and on-block dates and times (UTC).');
 		if (block_on_at <= block_off_at) return bad('On-block must be after off-block.');
-		if (hobbs_start === null || hobbs_end === null || !Number.isFinite(hobbs_start) || !Number.isFinite(hobbs_end)) {
-			return bad('Enter both Hobbs readings.');
+		if (tacho_start === null || tacho_end === null || !Number.isFinite(tacho_start) || !Number.isFinite(tacho_end)) {
+			return bad('Enter both Tacho readings.');
 		}
-		if (hobbs_end <= hobbs_start) return bad('Hobbs end must be greater than Hobbs start.');
+		if (tacho_end <= tacho_start) return bad('Tacho end must be greater than Tacho start.');
 		if (!ICAO.test(departure) || !ICAO.test(arrival)) {
 			return bad('Departure and arrival must be 4-letter ICAO codes (use XXXX for no aerodrome).');
 		}
@@ -123,6 +124,10 @@ export const actions: Actions = {
 			return bad('Oil added must be a non-negative number.');
 		}
 		if (!flight_type_id) return bad('Choose a flight type.');
+		if (!Number.isInteger(persons_on_board) || persons_on_board < 1) return bad('Persons on board must be at least 1 (you).');
+		const plane = await db.selectFrom('aircraft').select('seats').where('id', '=', aircraft_id).executeTakeFirst();
+		if (!plane) return bad('Choose an aircraft.');
+		if (persons_on_board > plane.seats) return bad(`That aircraft has ${plane.seats} seats.`);
 		if (second_pilot_id && second_pilot_id === me.id) return bad('The second pilot must be someone else.');
 		if ((second_pilot_id === null) !== (second_pilot_role === null)) {
 			return bad('Pick both a second pilot and their role, or neither.');
@@ -149,8 +154,8 @@ export const actions: Actions = {
 					second_pilot_role,
 					block_off_at: block_off_at.toISOString(),
 					block_on_at: block_on_at.toISOString(),
-					hobbs_start,
-					hobbs_end,
+					tacho_start,
+					tacho_end,
 					departure_airport_code: departure,
 					arrival_airport_code: arrival,
 					day_landings,
@@ -158,6 +163,7 @@ export const actions: Actions = {
 					refuel_liters,
 					oil_added_liters,
 					flight_type_id,
+					persons_on_board,
 					remarks
 				})
 				.execute();

@@ -16,6 +16,7 @@
 		{ href: '/manage/flights', label: 'Flights', icon: 'check' },
 		{ href: '/manage/invoices', label: 'Billing', icon: 'euro' },
 		{ href: '/manage/fleet', label: 'Fleet', icon: 'plane' },
+		{ href: '/manage/flight-types', label: 'Flight types', icon: 'list' },
 		{ href: '/manage/accounts', label: 'Accounts', icon: 'users' }
 	];
 	const tabs = [...pilotNav.slice(0, 4), { href: '/more', label: 'More', icon: 'more' }];

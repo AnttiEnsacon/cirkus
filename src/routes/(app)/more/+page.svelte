@@ -49,6 +49,11 @@
 				<span class="list-main"><span class="list-title">Fleet</span></span>
 				<Icon name="chevron" />
 			</a>
+			<a href="/manage/flight-types" class="list-item link">
+				<span class="list-icon"><Icon name="list" /></span>
+				<span class="list-main"><span class="list-title">Flight types</span></span>
+				<Icon name="chevron" />
+			</a>
 			<a href="/manage/accounts" class="list-item link">
 				<span class="list-icon"><Icon name="users" /></span>
 				<span class="list-main"><span class="list-title">Accounts</span></span>

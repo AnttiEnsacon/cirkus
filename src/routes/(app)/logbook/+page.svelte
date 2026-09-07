@@ -33,7 +33,7 @@
 					<span class="list-icon" class:teal={e.role === 'PIC'}><Icon name="plane" size={17} /></span>
 					<span class="list-main">
 						<span class="list-title"><span class="tailnum">{e.tail_number}</span> · <span class="tailnum">{e.route}</span></span>
-						<span class="list-sub">{e.date} · {e.hours} h · Hobbs {e.hobbs} · {e.flight_type}</span>
+						<span class="list-sub">{e.date} · {e.hours} h · Tacho {e.tacho} · {e.flight_type}</span>
 					</span>
 					<span class="list-end">
 						<span class="chip" class:teal={e.role === 'PIC'} class:amber={e.role !== 'PIC'}>{e.role}</span>
@@ -53,8 +53,8 @@
 							<tr>
 								<td class="mono">{e.date}<span class="sub">{e.blockOff} – {e.blockOn}</span></td>
 								<td><span class="tailnum">{e.tail_number}</span><span class="sub">{e.route}</span></td>
-								<td class="num">{e.hours}<span class="sub">{e.hobbs}</span></td>
-								<td>{e.flight_type}<span class="sub">ldg {e.landings}</span></td>
+								<td class="num">{e.hours}<span class="sub">{e.tacho}</span></td>
+								<td>{e.flight_type}<span class="sub">ldg {e.landings} · POB {e.pob}</span></td>
 								<td><span class="chip" class:teal={e.role === 'PIC'} class:amber={e.role !== 'PIC'}>{e.role}</span></td>
 								<td>{e.role === 'PIC' ? (e.second_name ?? '') : e.pic_name}</td>
 								<td><span class="status {e.status}">{e.status}</span></td>
