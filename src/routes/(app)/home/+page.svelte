@@ -13,10 +13,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">KML Aviation Oy</p>
-			<h1>Hello, {data.firstName}</h1>
-		</div>
+		<h1>Hello, {data.firstName}</h1>
 	</div>
 
 	{#if data.admin && needsAttention}
@@ -67,11 +64,6 @@
 		</a>
 	</div>
 
-	<div class="grid-auto quick">
-		<a href="/book" class="btn btn-secondary"><Icon name="calendar" size={18} /> Book</a>
-		<a href="/log" class="btn btn-secondary"><Icon name="pencil" size={18} /> Log a flight</a>
-	</div>
-
 	<p class="section-label">Coming up this week</p>
 	<div class="card tight">
 		{#if data.upcoming.length === 0}
@@ -88,7 +80,6 @@
 			{/each}
 		{/if}
 	</div>
-	<p class="hint">Reservation times are Helsinki local time. Logbook times are UTC.</p>
 </div>
 
 <style>
@@ -103,9 +94,6 @@
 	}
 	.stat .n.muted {
 		color: var(--ink-faint);
-	}
-	.quick .btn {
-		width: 100%;
 	}
 	.list-main {
 		display: flex;

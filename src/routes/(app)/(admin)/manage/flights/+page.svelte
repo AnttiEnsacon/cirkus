@@ -9,10 +9,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Admin · all times UTC</p>
-			<h1>Flights</h1>
-		</div>
+		<h1>Flights</h1>
 	</div>
 
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}

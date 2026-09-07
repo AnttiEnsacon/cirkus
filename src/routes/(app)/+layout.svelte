@@ -70,7 +70,6 @@
 	<div class="main">
 		<header class="topbar">
 			<a class="brand" href="/home"><img src="/cirkus-icon.png" alt="" /><span>CIRKUS</span></a>
-			<span class="eyebrow">KML Aviation Oy</span>
 			<a class="avatar" href="/more" aria-label="More">{initials}</a>
 		</header>
 
@@ -136,10 +135,8 @@
 		top: 0;
 		z-index: 5;
 	}
-	.topbar .eyebrow {
+	.topbar .brand {
 		flex: 1 1 auto;
-		text-align: right;
-		margin: 0;
 	}
 	.topbar .avatar {
 		text-decoration: none;

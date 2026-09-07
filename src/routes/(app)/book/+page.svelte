@@ -60,11 +60,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Reservations · Helsinki time</p>
-			<h1>Book a reservation</h1>
-		</div>
-		<span class="faint">Overlaps are checked automatically</span>
+		<h1>Book a reservation</h1>
 	</div>
 
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
@@ -151,9 +147,6 @@
 						{/if}
 					{/each}
 				</div>
-				<div class="legend faint">
-					<span><i class="sw sel"></i> Selected</span><span><i class="sw mine"></i> Yours</span><span><i class="sw booked"></i> Booked</span>
-				</div>
 			</div>
 		</div>
 
@@ -170,7 +163,6 @@
 				</div>
 			</div>
 			<div class="card stack">
-				<p class="section-label">Adjust</p>
 				<label class="field"><span>Starts</span><input name="starts_at" type="datetime-local" bind:value={startsAt} required /></label>
 				<label class="field"><span>Ends</span><input name="ends_at" type="datetime-local" bind:value={endsAt} required /></label>
 				<label class="field"><span>Notes (optional)</span><input name="notes" type="text" placeholder="e.g. local flight, EFHK–EFTU" /></label>
@@ -385,29 +377,6 @@
 		background: var(--navy);
 		color: #fff;
 	}
-	.legend {
-		display: flex;
-		gap: 14px;
-	}
-	.legend span {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-	}
-	.sw {
-		display: inline-block;
-		width: 10px;
-		height: 10px;
-		border-radius: 3px;
-		background: var(--line-strong);
-	}
-	.sw.sel {
-		background: var(--teal);
-	}
-	.sw.mine {
-		background: var(--navy);
-	}
-
 	/* ---- selection card ---- */
 	.sel-range {
 		font-weight: 800;

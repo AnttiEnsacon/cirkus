@@ -10,10 +10,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Admin</p>
-			<h1>Billing</h1>
-		</div>
+		<h1>Billing</h1>
 	</div>
 
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
@@ -32,7 +29,7 @@
 						<span class="list-icon"><Icon name="users" size={17} /></span>
 						<span class="list-main">
 							<span class="list-title">{u.pilot_name}</span>
-							<span class="list-sub">{u.flights} flight{u.flights === 1 ? '' : 's'} · {u.hours} h · at the current member rate</span>
+							<span class="list-sub">{u.flights} flight{u.flights === 1 ? '' : 's'} · {u.hours} h</span>
 						</span>
 						<span class="list-end">
 							<span class="mono amount">€{u.amount}</span>

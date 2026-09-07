@@ -10,10 +10,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Billing</p>
-			<h1>Invoices</h1>
-		</div>
+		<h1>Invoices</h1>
 	</div>
 
 	<div class="card stat">

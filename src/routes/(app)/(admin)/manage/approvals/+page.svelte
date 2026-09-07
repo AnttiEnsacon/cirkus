@@ -10,10 +10,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Admin</p>
-			<h1>Pending approvals</h1>
-		</div>
+		<h1>Pending approvals</h1>
 	</div>
 
 	{#if data.pending.length === 0}

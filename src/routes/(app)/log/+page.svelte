@@ -13,10 +13,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Flight log · all times UTC</p>
-			<h1>Log a flight</h1>
-		</div>
+		<h1>Log a flight</h1>
 	</div>
 
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
@@ -48,14 +45,14 @@
 		</div>
 
 		<div class="card stack">
-			<p class="section-label">Times (UTC) &amp; Hobbs</p>
+			<p class="section-label">Times &amp; Hobbs</p>
 			<div class="grid2">
 				<label class="field">
-					<span>Off-block</span>
+					<span>Off-block (UTC)</span>
 					<input name="block_off_at" type="datetime-local" value={v('block_off_at', data.defaultBlockOff)} required />
 				</label>
 				<label class="field">
-					<span>On-block</span>
+					<span>On-block (UTC)</span>
 					<input name="block_on_at" type="datetime-local" value={v('block_on_at', data.defaultBlockOn)} required />
 				</label>
 				<label class="field">
@@ -67,7 +64,6 @@
 					<input name="hobbs_end" class="mono" type="number" step="0.1" min="0" value={v('hobbs_end')} required />
 				</label>
 			</div>
-			<p class="hint">Flight time is Hobbs end − start; that's what gets invoiced.</p>
 		</div>
 
 		<div class="card stack">
@@ -90,12 +86,11 @@
 					<input name="night_landings" type="number" min="0" step="1" value={v('night_landings', '0')} />
 				</label>
 			</div>
-			<p class="hint">Use XXXX when no aerodrome is involved (e.g. seaplane ops).</p>
+			<p class="hint">XXXX = no aerodrome</p>
 		</div>
 
 		<div class="card stack">
 			<p class="section-label">Crew &amp; flight type</p>
-			<div class="chiprow"><span class="chip on">PIC · You</span></div>
 			<div class="fields">
 				<label class="field">
 					<span>Instructor / backup pilot (optional)</span>

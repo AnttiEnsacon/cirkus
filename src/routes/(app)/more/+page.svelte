@@ -21,7 +21,7 @@
 	<div class="card tight">
 		<a href="/invoices" class="list-item link">
 			<span class="list-icon teal"><Icon name="receipt" /></span>
-			<span class="list-main"><span class="list-title">Invoices</span><span class="list-sub">Your invoices and open balance</span></span>
+			<span class="list-main"><span class="list-title">Invoices</span></span>
 			<Icon name="chevron" />
 		</a>
 	</div>
@@ -31,27 +31,27 @@
 		<div class="card tight">
 			<a href="/manage/approvals" class="list-item link">
 				<span class="list-icon"><Icon name="shield" /></span>
-				<span class="list-main"><span class="list-title">Approvals</span><span class="list-sub">New accounts waiting</span></span>
+				<span class="list-main"><span class="list-title">Approvals</span></span>
 				<Icon name="chevron" />
 			</a>
 			<a href="/manage/flights" class="list-item link">
 				<span class="list-icon"><Icon name="check" /></span>
-				<span class="list-main"><span class="list-title">Flights</span><span class="list-sub">Approve logged flights</span></span>
+				<span class="list-main"><span class="list-title">Flights</span></span>
 				<Icon name="chevron" />
 			</a>
 			<a href="/manage/invoices" class="list-item link">
 				<span class="list-icon"><Icon name="euro" /></span>
-				<span class="list-main"><span class="list-title">Billing</span><span class="list-sub">Create and track invoices</span></span>
+				<span class="list-main"><span class="list-title">Billing</span></span>
 				<Icon name="chevron" />
 			</a>
 			<a href="/manage/fleet" class="list-item link">
 				<span class="list-icon"><Icon name="plane" /></span>
-				<span class="list-main"><span class="list-title">Fleet</span><span class="list-sub">Aircraft, rates, co-owners</span></span>
+				<span class="list-main"><span class="list-title">Fleet</span></span>
 				<Icon name="chevron" />
 			</a>
 			<a href="/manage/accounts" class="list-item link">
 				<span class="list-icon"><Icon name="users" /></span>
-				<span class="list-main"><span class="list-title">Accounts</span><span class="list-sub">Members, roles, passwords</span></span>
+				<span class="list-main"><span class="list-title">Accounts</span></span>
 				<Icon name="chevron" />
 			</a>
 		</div>

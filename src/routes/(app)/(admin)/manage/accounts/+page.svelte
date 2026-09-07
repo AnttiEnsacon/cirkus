@@ -9,10 +9,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Admin</p>
-			<h1>Accounts</h1>
-		</div>
+		<h1>Accounts</h1>
 	</div>
 
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}

@@ -10,10 +10,7 @@
 
 <div class="page">
 	<div class="page-head">
-		<div>
-			<p class="eyebrow">Personal records · UTC</p>
-			<h1>My logbook</h1>
-		</div>
+		<h1>My logbook</h1>
 		<a href="/log" class="btn sm"><Icon name="pencil" size={16} /> Log a flight</a>
 	</div>
 
@@ -26,7 +23,6 @@
 		<div class="stat"><div class="n">{data.totals.month}</div><div class="l">This month</div></div>
 	</div>
 
-	<p class="section-label">Flights</p>
 	{#if data.entries.length === 0}
 		<div class="card"><p class="muted">No flights logged yet.</p></div>
 	{:else}
