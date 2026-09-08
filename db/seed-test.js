@@ -35,6 +35,13 @@ try {
 	await client.query('delete from flight_log_entries');
 	await client.query('delete from reservations');
 	await client.query('delete from sessions');
+	// A second aircraft, billed by airborne time, no Tacho recorded — so the
+	// flows cover both bases. (Not in a migration: test data only.)
+	await client.query(
+		`insert into aircraft (tail_number, type, seats, member_rate_per_hour, guest_rate_per_hour, billing_basis, records_tacho)
+		   values ('OH-TST', 'Test plane', 4, 200.00, 320.00, 'airborne', false)
+		   on conflict (tail_number) do update set billing_basis = 'airborne', records_tacho = false, member_rate_per_hour = 200.00`.replace(/\s+/g, ' ')
+	);
 	for (const u of [TEST_ADMIN, TEST_PILOT]) {
 		const hash = await bcrypt.hash(u.password, 4);
 		const r = await client.query(

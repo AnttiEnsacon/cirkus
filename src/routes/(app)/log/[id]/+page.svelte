@@ -23,6 +23,7 @@
 			reservations={data.reservations}
 			initial={data.initial}
 			pilotName={data.pilotName}
+			basisOverride={data.basis}
 			{form}
 			submitLabel="Save changes"
 		/>

@@ -31,8 +31,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		db
 			.selectFrom('flight_log_entries')
 			.select([
-				sql<string>`coalesce(sum(flight_hours), 0)`.as('total'),
-				sql<string>`coalesce(sum(flight_hours) filter (where block_off_at >= ${monthStart.toISOString()}::timestamptz), 0)`.as('month')
+				sql<string>`coalesce(sum(block_hours), 0)`.as('total'),
+				sql<string>`coalesce(sum(block_hours) filter (where block_off_at >= ${monthStart.toISOString()}::timestamptz), 0)`.as('month')
 			])
 			.where('pilot_id', '=', me.id)
 			.executeTakeFirstOrThrow(),
@@ -45,7 +45,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		db
 			.selectFrom('flight_log_entries')
 			.innerJoin('aircraft', 'aircraft.id', 'flight_log_entries.aircraft_id')
-			.select(['block_off_at', 'departure_airport_code', 'arrival_airport_code', 'flight_hours', 'aircraft.tail_number', 'status'])
+			.select(['block_off_at', 'departure_airport_code', 'arrival_airport_code', 'block_hours', 'aircraft.tail_number', 'status'])
 			.where('pilot_id', '=', me.id)
 			.orderBy('block_off_at', 'desc')
 			.executeTakeFirst()
@@ -90,7 +90,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 					date: formatUtcDate(new Date(lastFlight.block_off_at)),
 					route: `${lastFlight.departure_airport_code} → ${lastFlight.arrival_airport_code}`,
 					tail_number: lastFlight.tail_number,
-					hours: Number(lastFlight.flight_hours).toFixed(2),
+					hours: Number(lastFlight.block_hours).toFixed(2),
 					status: lastFlight.status
 				}
 			: null,

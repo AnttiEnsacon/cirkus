@@ -22,6 +22,7 @@
 		<div class="stat"><div class="n">{data.totals.pic}</div><div class="l">PIC hrs</div></div>
 		<div class="stat"><div class="n">{data.totals.month}</div><div class="l">This month</div></div>
 	</div>
+	<p class="hint">Hours are block time, off-block to on-block.</p>
 
 	{#if data.entries.length === 0}
 		<div class="card"><p class="muted">No flights logged yet.</p></div>
@@ -33,7 +34,7 @@
 					<span class="list-icon" class:teal={e.role === 'PIC'}><Icon name="plane" size={17} /></span>
 					<span class="list-main">
 						<span class="list-title"><span class="tailnum">{e.tail_number}</span> · <span class="tailnum">{e.route}</span></span>
-						<span class="list-sub">{e.date} · {e.hours} h · Tacho {e.tacho} · {e.flight_type}</span>
+						<span class="list-sub">{e.date} · {e.hours} h · {e.billing} · {e.flight_type}</span>
 					</span>
 					<span class="list-end">
 						<span class="chip" class:teal={e.role === 'PIC'} class:amber={e.role !== 'PIC'}>{e.role}</span>
@@ -47,14 +48,14 @@
 			<div class="table-wrap">
 				<table class="table">
 					<thead>
-						<tr><th>Date · UTC</th><th>Flight</th><th class="num">Hrs</th><th>Details</th><th>Role</th><th>Crew</th><th>Status</th><th></th></tr>
+						<tr><th>Date · UTC</th><th>Flight</th><th class="num">Block hrs</th><th>Details</th><th>Role</th><th>Crew</th><th>Status</th><th></th></tr>
 					</thead>
 					<tbody>
 						{#each data.entries as e (e.id)}
 							<tr>
 								<td class="mono">{e.date}<span class="sub">{e.blockOff} – {e.blockOn}</span></td>
 								<td><span class="tailnum">{e.tail_number}</span><span class="sub">{e.route}</span></td>
-								<td class="num">{e.hours}<span class="sub">{e.tacho}</span></td>
+								<td class="num">{e.hours}<span class="sub">{e.billing}</span></td>
 								<td>{e.flight_type}<span class="sub">ldg {e.landings} · POB {e.pob}</span></td>
 								<td><span class="chip" class:teal={e.role === 'PIC'} class:amber={e.role !== 'PIC'}>{e.role}</span></td>
 								<td>{e.role === 'PIC' ? (e.second_name ?? '') : e.pic_name}</td>

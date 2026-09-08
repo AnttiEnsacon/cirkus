@@ -57,24 +57,32 @@ test('invoice lifecycle freezes and releases the flight', async ({ page }) => {
 	const billedId = await billed.first().locator('form[action="?/delete"] input[name="id"]').count();
 	expect(billedId).toBe(0);
 
-	// A new flight, billed on a second invoice that is then cancelled → editable again.
+	// A new flight on the airborne-billed plane, billed on a second invoice
+	// (0.78 h × €200 = €156.00) that is then cancelled → editable again.
 	await page.goto('/log');
-	await page.getByLabel('Tacho start').fill('3000.0');
-	await page.getByLabel('Tacho end').fill('3000.5');
+	await page.getByLabel('Aircraft').selectOption({ label: 'OH-TST — Test plane' });
+	await page.getByLabel('Off-block date').fill('2026-09-08');
+	await page.getByLabel('Off-block time').fill('10:05');
+	await page.getByLabel('On-block date').fill('2026-09-08');
+	await page.getByLabel('On-block time').fill('11:04');
+	await page.getByLabel('Take-off time').fill('10:12');
+	await page.getByLabel('Landing time').fill('10:59');
 	await page.getByRole('button', { name: 'Save flight log' }).click();
 	await logout(page);
 	await login(page, ADMIN);
 	await page.goto('/manage/invoices');
+	await expect(page.locator('.list-item.flight', { hasText: 'T/O 10:12Z → LDG 10:59Z' })).toContainText('€156.00');
 	await page.getByRole('button', { name: /Create all/ }).click();
 	await expect(page.getByText(/invoice(s)? created\./)).toBeVisible();
 	const second = page.locator('table tbody tr', { hasText: 'issued' }).first();
 	await second.getByRole('button', { name: 'Cancel' }).click();
 	await expect(page.locator('table tbody tr', { hasText: 'cancelled' })).toHaveCount(1);
-	await expect(page.locator('.list-item.flight', { hasText: '3000.0 → 3000.5' })).toBeVisible(); // released
+	await expect(page.locator('.list-item.flight', { hasText: 'T/O 10:12Z → LDG 10:59Z' })).toBeVisible(); // released
 	await logout(page);
 	await login(page, PILOT);
 	await page.goto('/logbook');
-	const released = page.locator('table tbody tr', { hasText: '3000.0 → 3000.5' });
-	await expect(released).toContainText('submitted');
+	// (Flow 02 left an earlier OH-TST flight, now billed on the first invoice.)
+	const released = page.locator('table tbody tr', { hasText: 'OH-TST' }).filter({ hasText: 'submitted' });
+	await expect(released).toHaveCount(1);
 	await expect(released.getByRole('link', { name: 'Edit' })).toBeVisible();
 });

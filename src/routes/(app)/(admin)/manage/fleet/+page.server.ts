@@ -1,6 +1,13 @@
 import { fail } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { db, type BillingBasis } from '$lib/server/db';
 import type { Actions, PageServerLoad } from './$types';
+
+/** Billing basis + whether the log form asks for Tacho (forced on for Tacho billing). */
+function readBilling(form: FormData): { billing_basis: BillingBasis; records_tacho: boolean } | { error: string } {
+	const basis = String(form.get('billing_basis') ?? 'tacho');
+	if (basis !== 'tacho' && basis !== 'airborne') return { error: 'Choose how the aircraft is billed.' };
+	return { billing_basis: basis, records_tacho: basis === 'tacho' || form.get('records_tacho') === 'on' };
+}
 
 export const load: PageServerLoad = async () => {
 	const aircraft = await db
@@ -11,7 +18,9 @@ export const load: PageServerLoad = async () => {
 			'type',
 			'seats',
 			'member_rate_per_hour',
-			'guest_rate_per_hour'
+			'guest_rate_per_hour',
+			'billing_basis',
+			'records_tacho'
 		])
 		.orderBy('tail_number', 'asc')
 		.execute();
@@ -50,11 +59,13 @@ export const actions: Actions = {
 		if (!Number.isFinite(member_rate_per_hour) || !Number.isFinite(guest_rate_per_hour)) {
 			return fail(400, { error: 'Both hourly rates must be numbers.' });
 		}
+		const billing = readBilling(form);
+		if ('error' in billing) return fail(400, { error: billing.error });
 
 		try {
 			await db
 				.insertInto('aircraft')
-				.values({ tail_number, type, seats, member_rate_per_hour, guest_rate_per_hour })
+				.values({ tail_number, type, seats, member_rate_per_hour, guest_rate_per_hour, ...billing })
 				.execute();
 		} catch {
 			return fail(400, { error: `An aircraft with tail number ${tail_number} already exists.` });
@@ -75,7 +86,11 @@ export const actions: Actions = {
 		if (!Number.isFinite(member_rate_per_hour) || !Number.isFinite(guest_rate_per_hour)) {
 			return fail(400, { error: 'Both hourly rates must be numbers.' });
 		}
+		const billing = readBilling(form);
+		if ('error' in billing) return fail(400, { error: billing.error });
 
+		// Existing flights keep the basis they were logged under (it is
+		// copied onto each entry); this only affects flights logged from now on.
 		await db
 			.updateTable('aircraft')
 			.set({
@@ -83,6 +98,7 @@ export const actions: Actions = {
 				seats,
 				member_rate_per_hour,
 				guest_rate_per_hour,
+				...billing,
 				updated_at: new Date().toISOString()
 			})
 			.where('id', '=', id)

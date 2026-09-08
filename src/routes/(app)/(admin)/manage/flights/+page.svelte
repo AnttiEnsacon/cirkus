@@ -21,7 +21,7 @@
 			<div class="table-wrap">
 				<table class="table">
 					<thead>
-						<tr><th>Date · UTC</th><th>Pilot</th><th>Flight</th><th class="num">Hrs</th><th>Details</th><th>Status</th><th></th></tr>
+						<tr><th>Date · UTC</th><th>Pilot</th><th>Flight</th><th class="num">Billed hrs</th><th>Details</th><th>Status</th><th></th></tr>
 					</thead>
 					<tbody>
 						{#each data.entries as e (e.id)}
@@ -29,7 +29,7 @@
 								<td class="mono">{e.date}<span class="sub">{e.blockOff} – {e.blockOn}</span></td>
 								<td>{e.pic_name}{#if e.second}<span class="sub" style="font-family:var(--sans)">+ {e.second}</span>{/if}</td>
 								<td><span class="tailnum">{e.tail_number}</span><span class="sub">{e.route}</span></td>
-								<td class="num">{e.hours}<span class="sub">{e.tacho}</span></td>
+								<td class="num">{e.hours}<span class="sub">{e.billing}</span><span class="sub">block {e.blockHours}</span></td>
 								<td class="wrap">{e.flight_type}<span class="sub">POB {e.pob} · ldg {e.landings}{e.fuel !== '' ? ` · fuel ${e.fuel} L` : ''}{e.oil !== '' ? ` · oil ${e.oil} L` : ''}</span>{#if e.remarks}<span class="sub" style="font-family:var(--sans)">{e.remarks}</span>{/if}</td>
 								<td><span class="status {e.status}">{e.status}</span></td>
 								<td class="actions">

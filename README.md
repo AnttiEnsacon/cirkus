@@ -16,9 +16,9 @@ Reservation, logbook and billing system for **KML Aviation Oy** — one aircraft
 |---|---|---|
 | Register, log in, approval of new accounts | everyone / admins | `/register`, `/login`, `/manage/approvals` |
 | Accounts: edit name/email/role/status, set passwords | admins | `/manage/accounts` |
-| Fleet: aircraft, seats, member & guest hourly rates, co-owners | admins | `/manage/fleet` |
+| Fleet: aircraft, seats, rates, billing basis (Tacho / airborne time), co-owners | admins | `/manage/fleet` |
 | Book the aircraft (Helsinki local time, no double-booking) | pilots | `/book` |
-| Log a flight (UTC, Tacho-based), personal logbook | pilots | `/log`, `/logbook` |
+| Log a flight (UTC; Tacho or take-off/landing, per aircraft), personal logbook in block hours | pilots | `/log`, `/logbook` |
 | See, correct or delete any unbilled flight | admins | `/manage/flights` |
 | Create invoices on demand, mark paid, cancel | admins | `/manage/invoices` |
 | See own invoices, print one | pilots | `/invoices` |
@@ -165,6 +165,13 @@ az postgres flexible-server show --resource-group ensacon-ts-rg --name ensacon-t
   *Cancel* puts the flights back, fix the flight, create again — the number
   advances, never reused.
 - **Rate change:** *Fleet*. Affects invoices created from then on only.
+- **New aircraft:** *Fleet → Add an aircraft*, choosing how it is billed:
+  *Tacho time* (tacho end − start) or *Airborne time* (take-off to landing,
+  exact minutes). *Record Tacho readings* decides whether the log form asks
+  for the meter; it is always on for Tacho billing and optional otherwise.
+  Each flight remembers the basis it was logged under, so changing a
+  plane's setting later only affects new flights. The pilot's logbook
+  shows block hours for every aircraft; invoices use the billing basis.
 - **Expenses:** a pilot posts a receipt under *Expenses* (photo, total,
   lines by category). Under *Admin → Expenses* look at the photo, pay by
   bank transfer, then *Mark paid* with the reference — or *Reject* with a

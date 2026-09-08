@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 import { db } from './db';
 import { formatUtcDate } from './time';
+import { billingDetail, billingLabel } from './flightLog';
 
 const DUE_DAYS = 14;
 
@@ -18,7 +19,7 @@ export interface UnbilledFlight {
 	date: string;
 	tail_number: string;
 	route: string;
-	tacho: string;
+	billing: string;
 	hours: string;
 	amount: string;
 }
@@ -35,8 +36,11 @@ export async function unbilledFlights(): Promise<UnbilledFlight[]> {
 			'f.id',
 			'f.pilot_id',
 			'f.block_off_at',
+			'f.billing_basis',
 			'f.tacho_start',
 			'f.tacho_end',
+			'f.takeoff_at',
+			'f.landing_at',
 			'f.flight_hours',
 			'f.departure_airport_code',
 			'f.arrival_airport_code',
@@ -53,7 +57,7 @@ export async function unbilledFlights(): Promise<UnbilledFlight[]> {
 		date: formatUtcDate(new Date(r.block_off_at)),
 		tail_number: r.tail_number,
 		route: `${r.departure_airport_code} → ${r.arrival_airport_code}`,
-		tacho: `${r.tacho_start} → ${r.tacho_end}`,
+		billing: billingDetail(r),
 		hours: Number(r.flight_hours).toFixed(2),
 		amount: Number(r.amount).toFixed(2)
 	}));
@@ -104,6 +108,7 @@ export async function createInvoiceForPilot(pilotId: string, createdBy: string):
 				'f.aircraft_id',
 				'f.block_off_at',
 				'f.flight_hours',
+				'f.billing_basis',
 				'f.departure_airport_code',
 				'f.arrival_airport_code',
 				'aircraft.tail_number',
@@ -151,7 +156,7 @@ export async function createInvoiceForPilot(pilotId: string, createdBy: string):
 					aircraft_id: f.aircraft_id,
 					hours_billed: f.flight_hours,
 					rate_applied: f.member_rate_per_hour,
-					description: `${formatUtcDate(new Date(f.block_off_at))} ${f.tail_number} ${f.departure_airport_code}→${f.arrival_airport_code}`
+					description: `${formatUtcDate(new Date(f.block_off_at))} ${f.tail_number} ${f.departure_airport_code}→${f.arrival_airport_code} · ${Number(f.flight_hours).toFixed(2)} h ${billingLabel(f.billing_basis)}`
 				}))
 			)
 			.execute();

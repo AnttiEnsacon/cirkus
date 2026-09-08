@@ -42,6 +42,17 @@
 				<label class="field"><span>Seats</span><input name="seats" type="number" min="1" value={plane.seats} required /></label>
 				<label class="field"><span>Member rate €/h</span><input name="member_rate_per_hour" class="mono" type="number" step="0.01" min="0" value={plane.member_rate_per_hour} required /></label>
 				<label class="field"><span>Guest rate €/h</span><input name="guest_rate_per_hour" class="mono" type="number" step="0.01" min="0" value={plane.guest_rate_per_hour} required /></label>
+				<label class="field">
+					<span>Billing</span>
+					<select name="billing_basis">
+						<option value="tacho" selected={plane.billing_basis === 'tacho'}>Tacho time</option>
+						<option value="airborne" selected={plane.billing_basis === 'airborne'}>Airborne time</option>
+					</select>
+				</label>
+				<label class="field">
+					<span>Record Tacho readings</span>
+					<span class="check"><input name="records_tacho" type="checkbox" checked={plane.records_tacho} /> {plane.billing_basis === 'tacho' ? 'Required for Tacho billing' : 'Optional on the log form'}</span>
+				</label>
 				<div class="field"><span>&nbsp;</span><button type="submit" class="btn btn-secondary sm">Save</button></div>
 			</form>
 
@@ -71,6 +82,17 @@
 			<label class="field"><span>Seats</span><input name="seats" type="number" min="1" required /></label>
 			<label class="field"><span>Member rate €/h</span><input name="member_rate_per_hour" class="mono" type="number" step="0.01" min="0" required /></label>
 			<label class="field"><span>Guest rate €/h</span><input name="guest_rate_per_hour" class="mono" type="number" step="0.01" min="0" required /></label>
+			<label class="field">
+				<span>Billing</span>
+				<select name="billing_basis">
+					<option value="tacho">Tacho time</option>
+					<option value="airborne">Airborne time</option>
+				</select>
+			</label>
+			<label class="field">
+				<span>Record Tacho readings</span>
+				<span class="check"><input name="records_tacho" type="checkbox" checked /> Ask on the log form</span>
+			</label>
 		</div>
 		<button type="submit" class="btn sm"><Icon name="plus" size={16} /> Add aircraft</button>
 	</form>
@@ -105,6 +127,18 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 		gap: 6px 12px;
+	}
+	.check {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 44px;
+		font-size: 13.5px;
+		color: var(--ink-soft);
+	}
+	.check input {
+		width: 18px;
+		height: 18px;
 	}
 	.field.inline > span {
 		font-weight: 600;

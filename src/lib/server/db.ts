@@ -22,11 +22,17 @@ export interface SessionsTable {
 	expires_at: ColumnType<Date, string, string>;
 }
 
+/** What a flight is billed on: tacho difference, or take-off to landing. */
+export type BillingBasis = 'tacho' | 'airborne';
+
 export interface AircraftTable {
 	id: Generated<string>;
 	tail_number: string;
 	type: string;
 	seats: number;
+	billing_basis: Generated<BillingBasis>;
+	/** Whether the log form asks for meter readings (always true for tacho billing). */
+	records_tacho: Generated<boolean>;
 	member_rate_per_hour: ColumnType<string, number | string, number | string>;
 	guest_rate_per_hour: ColumnType<string, number | string, number | string>;
 	created_at: ColumnType<Date, string | undefined, never>;
@@ -78,11 +84,17 @@ export interface FlightLogEntriesTable {
 	pilot_id: string;
 	second_pilot_id: string | null;
 	second_pilot_role: SecondPilotRole | null;
+	billing_basis: Generated<BillingBasis>;
 	block_off_at: ColumnType<Date, string, string>;
 	block_on_at: ColumnType<Date, string, string>;
-	tacho_start: ColumnType<string, number | string, number | string>;
-	tacho_end: ColumnType<string, number | string, number | string>;
+	takeoff_at: ColumnType<Date | null, string | null, string | null>;
+	landing_at: ColumnType<Date | null, string | null, string | null>;
+	tacho_start: ColumnType<string | null, number | string | null, number | string | null>;
+	tacho_end: ColumnType<string | null, number | string | null, number | string | null>;
+	/** Billed hours, by billing_basis. Generated. */
 	flight_hours: ColumnType<string, never, never>;
+	/** Off-block to on-block, what the pilot's logbook shows. Generated. */
+	block_hours: ColumnType<string, never, never>;
 	departure_airport_code: string;
 	arrival_airport_code: string;
 	persons_on_board: Generated<number>;

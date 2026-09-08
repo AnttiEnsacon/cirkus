@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { formatUtcDate } from '$lib/server/time';
+import { billingDetail } from '$lib/server/flightLog';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -48,8 +49,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			'f.block_off_at',
 			'f.departure_airport_code',
 			'f.arrival_airport_code',
+			'f.billing_basis',
 			'f.tacho_start',
-			'f.tacho_end'
+			'f.tacho_end',
+			'f.takeoff_at',
+			'f.landing_at'
 		])
 		.where('l.invoice_id', '=', inv.id)
 		.orderBy('f.block_off_at', 'asc')
@@ -78,7 +82,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			date: formatUtcDate(new Date(l.block_off_at)),
 			aircraft: l.tail_number,
 			route: `${l.departure_airport_code} → ${l.arrival_airport_code}`,
-			tacho: `${l.tacho_start} → ${l.tacho_end}`,
+			billing: billingDetail(l),
 			hours: Number(l.hours_billed).toFixed(2),
 			rate: Number(l.rate_applied).toFixed(2),
 			amount: Number(l.amount).toFixed(2)

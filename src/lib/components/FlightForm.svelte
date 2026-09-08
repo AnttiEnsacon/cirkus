@@ -7,6 +7,8 @@
 		tail_number: string;
 		type: string;
 		seats: number;
+		billing_basis: 'tacho' | 'airborne';
+		records_tacho: boolean;
 		last_tacho: string | null;
 	}
 	interface Props {
@@ -20,12 +22,21 @@
 		form: { error?: string; values?: Record<string, unknown> } | null | undefined;
 		/** Shown read-only when an admin edits another pilot's flight. */
 		pilotName?: string;
+		/** Editing: the basis the entry was logged under, whatever the aircraft says now. */
+		basisOverride?: 'tacho' | 'airborne';
 		submitLabel: string;
 	}
-	let { aircraft, flightTypes, people, reservations, initial, form, pilotName, submitLabel }: Props = $props();
+	let { aircraft, flightTypes, people, reservations, initial, form, pilotName, basisOverride, submitLabel }: Props = $props();
 
 	const v = (key: string, fallback = '') => String(form?.values?.[key] ?? initial[key] ?? fallback);
 	const firstAircraft = $derived(aircraft[0]);
+
+	// The selected aircraft decides what the Times card asks for.
+	// svelte-ignore state_referenced_locally
+	let aircraftId = $state(v('aircraft_id', firstAircraft?.id ?? ''));
+	const plane = $derived(aircraft.find((a) => a.id === aircraftId) ?? firstAircraft);
+	const basis = $derived(basisOverride ?? plane?.billing_basis ?? 'tacho');
+	const asksTacho = $derived(basis === 'tacho' || (plane?.records_tacho ?? true));
 
 	// Off/on-block as date + time pairs (UTC). The on-block date follows the
 	// off-block date as long as the two were the same — a normal same-day
@@ -38,6 +49,16 @@
 	let onDate = $state(v('block_on_date'));
 	// svelte-ignore state_referenced_locally
 	let onTime = $state(v('block_on_time'));
+	// Take-off and landing (airborne-billed aircraft): default to the block
+	// times, and their dates follow the block dates.
+	// svelte-ignore state_referenced_locally
+	let toDate = $state(v('takeoff_date', v('block_off_date')));
+	// svelte-ignore state_referenced_locally
+	let toTime = $state(v('takeoff_time', v('block_off_time')));
+	// svelte-ignore state_referenced_locally
+	let ldgDate = $state(v('landing_date', v('block_on_date')));
+	// svelte-ignore state_referenced_locally
+	let ldgTime = $state(v('landing_time', v('block_on_time')));
 
 	// Plain inputs are bound too: Svelte re-syncs an unbound value={…}
 	// whenever a sibling update runs (the on-block date following the
@@ -68,8 +89,42 @@
 		const d = offDate;
 		untrack(() => {
 			if (onDate === lastOffDate) onDate = d;
+			if (toDate === lastOffDate) toDate = d;
 			lastOffDate = d;
 		});
+	});
+	// Switching aircraft moves the Tacho-start prefill along, unless the
+	// pilot has already typed something else.
+	// svelte-ignore state_referenced_locally
+	let lastPrefill = plane?.last_tacho ?? '';
+	$effect(() => {
+		const next = plane?.records_tacho ? (plane?.last_tacho ?? '') : '';
+		untrack(() => {
+			if (tachoStart === lastPrefill || tachoStart === '') tachoStart = next;
+			lastPrefill = next;
+		});
+	});
+	// svelte-ignore state_referenced_locally
+	let lastOnDate = onDate;
+	$effect(() => {
+		const d = onDate;
+		untrack(() => {
+			if (ldgDate === lastOnDate) ldgDate = d;
+			lastOnDate = d;
+		});
+	});
+
+	// What will be billed and what the logbook records, as the pilot types.
+	const mins = (d: string, t: string) => {
+		const ms = Date.parse(`${d}T${t}:00Z`);
+		return Number.isFinite(ms) ? ms / 60000 : NaN;
+	};
+	const hours = (a: number, b: number) => (Number.isFinite(a) && Number.isFinite(b) && b > a ? ((b - a) / 60).toFixed(2) : '—');
+	const blockHours = $derived(hours(mins(offDate, offTime), mins(onDate, onTime)));
+	const billedHours = $derived.by(() => {
+		if (basis === 'airborne') return hours(mins(toDate, toTime), mins(ldgDate, ldgTime));
+		const a = Number(tachoStart), b = Number(tachoEnd);
+		return tachoStart !== '' && tachoEnd !== '' && Number.isFinite(a) && Number.isFinite(b) && b > a ? (b - a).toFixed(2) : '—';
 	});
 </script>
 
@@ -87,10 +142,10 @@
 			{/if}
 			<label class="field">
 				<span>Aircraft</span>
-				<select name="aircraft_id" required>
-					{#each aircraft as plane (plane.id)}
-						<option value={plane.id} selected={v('aircraft_id', firstAircraft?.id ?? '') === plane.id}>
-							{plane.tail_number} — {plane.type}{plane.last_tacho ? ` (last Tacho ${plane.last_tacho})` : ''}
+				<select name="aircraft_id" bind:value={aircraftId} required>
+					{#each aircraft as a (a.id)}
+						<option value={a.id}>
+							{a.tail_number} — {a.type}{a.last_tacho && a.records_tacho ? ` (last Tacho ${a.last_tacho})` : ''}
 						</option>
 					{/each}
 				</select>
@@ -108,7 +163,7 @@
 	</div>
 
 	<div class="card stack">
-		<p class="section-label">Times &amp; Tacho</p>
+		<p class="section-label">{basis === 'tacho' ? 'Times & Tacho' : 'Times'}</p>
 		<div class="field">
 			<span>Off-block (UTC)</span>
 			<div class="dt">
@@ -116,6 +171,22 @@
 				<input name="block_off_time" type="time" bind:value={offTime} required aria-label="Off-block time" />
 			</div>
 		</div>
+		{#if basis === 'airborne'}
+			<div class="field">
+				<span>Take-off (UTC)</span>
+				<div class="dt">
+					<input name="takeoff_date" type="date" bind:value={toDate} required aria-label="Take-off date" />
+					<input name="takeoff_time" type="time" bind:value={toTime} required aria-label="Take-off time" />
+				</div>
+			</div>
+			<div class="field">
+				<span>Landing (UTC)</span>
+				<div class="dt">
+					<input name="landing_date" type="date" bind:value={ldgDate} required aria-label="Landing date" />
+					<input name="landing_time" type="time" bind:value={ldgTime} required aria-label="Landing time" />
+				</div>
+			</div>
+		{/if}
 		<div class="field">
 			<span>On-block (UTC)</span>
 			<div class="dt">
@@ -123,17 +194,39 @@
 				<input name="block_on_time" type="time" bind:value={onTime} required aria-label="On-block time" />
 			</div>
 		</div>
-		<div class="grid2">
-			<label class="field">
-				<span>Tacho start</span>
-				<input name="tacho_start" class="mono" type="number" step="0.1" min="0" bind:value={tachoStart} required />
-			</label>
-			<label class="field">
-				<span>Tacho end</span>
-				<input name="tacho_end" class="mono" type="number" step="0.1" min="0" bind:value={tachoEnd} required />
-			</label>
+		{#if basis === 'tacho'}
+			<div class="grid2">
+				<label class="field">
+					<span>Tacho start</span>
+					<input name="tacho_start" class="mono" type="number" step="0.1" min="0" bind:value={tachoStart} required />
+				</label>
+				<label class="field">
+					<span>Tacho end</span>
+					<input name="tacho_end" class="mono" type="number" step="0.1" min="0" bind:value={tachoEnd} required />
+				</label>
+			</div>
+		{/if}
+		<div class="row between figures">
+			<span>{basis === 'airborne' ? 'Airborne' : 'Tacho'} {billedHours} h · billed</span>
+			<span>Block {blockHours} h · logbook</span>
 		</div>
 	</div>
+
+	{#if basis === 'airborne' && asksTacho}
+		<div class="card stack">
+			<p class="section-label">Tacho (for maintenance, optional)</p>
+			<div class="grid2">
+				<label class="field">
+					<span>Tacho start</span>
+					<input name="tacho_start" class="mono" type="number" step="0.1" min="0" bind:value={tachoStart} />
+				</label>
+				<label class="field">
+					<span>Tacho end</span>
+					<input name="tacho_end" class="mono" type="number" step="0.1" min="0" bind:value={tachoEnd} />
+				</label>
+			</div>
+		</div>
+	{/if}
 
 	<div class="card stack">
 		<p class="section-label">Route</p>
@@ -217,5 +310,11 @@
 <style>
 	.form {
 		max-width: 44rem;
+	}
+	.figures {
+		border-top: 1px solid var(--line);
+		padding-top: 10px;
+		color: var(--ink-faint);
+		font-size: 12.5px;
 	}
 </style>

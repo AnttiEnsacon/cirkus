@@ -28,12 +28,15 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const off = toUtcInputValue(new Date(entry.block_off_at));
 	const on = toUtcInputValue(new Date(entry.block_on_at));
+	const to = entry.takeoff_at ? toUtcInputValue(new Date(entry.takeoff_at)) : off;
+	const ldg = entry.landing_at ? toUtcInputValue(new Date(entry.landing_at)) : on;
 	const s = (x: string | number | null) => (x === null ? '' : String(x));
 
 	return {
 		...formData,
 		billed: entry.status === 'billed',
 		pilotName: entry.pilot_id === me.id ? undefined : entry.pilot_name,
+		basis: entry.billing_basis,
 		initial: {
 			aircraft_id: entry.aircraft_id,
 			reservation_id: s(entry.reservation_id),
@@ -41,8 +44,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			block_off_time: off.slice(11, 16),
 			block_on_date: on.slice(0, 10),
 			block_on_time: on.slice(11, 16),
-			tacho_start: entry.tacho_start,
-			tacho_end: entry.tacho_end,
+			takeoff_date: to.slice(0, 10),
+			takeoff_time: to.slice(11, 16),
+			landing_date: ldg.slice(0, 10),
+			landing_time: ldg.slice(11, 16),
+			tacho_start: s(entry.tacho_start),
+			tacho_end: s(entry.tacho_end),
 			departure: entry.departure_airport_code,
 			arrival: entry.arrival_airport_code,
 			day_landings: String(entry.day_landings),
@@ -63,7 +70,7 @@ export const actions: Actions = {
 		const me = locals.user!;
 		const entry = await editableEntry(params.id, me);
 		const form = await request.formData();
-		const parsed = await parseFlightForm(form, entry.pilot_id);
+		const parsed = await parseFlightForm(form, entry.pilot_id, entry.billing_basis);
 		if (!parsed.ok) return fail(400, { error: parsed.error, values: Object.fromEntries(form.entries()) });
 
 		const updated = await db.transaction().execute(async (trx) => {

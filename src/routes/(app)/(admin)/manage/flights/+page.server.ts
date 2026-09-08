@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { formatUtc, formatUtcDate } from '$lib/server/time';
+import { billingDetail } from '$lib/server/flightLog';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
@@ -14,9 +15,13 @@ export const load: PageServerLoad = async () => {
 			'f.id',
 			'f.block_off_at',
 			'f.block_on_at',
+			'f.billing_basis',
 			'f.tacho_start',
 			'f.tacho_end',
+			'f.takeoff_at',
+			'f.landing_at',
 			'f.flight_hours',
+			'f.block_hours',
 			'f.departure_airport_code',
 			'f.arrival_airport_code',
 			'f.persons_on_board',
@@ -41,8 +46,9 @@ export const load: PageServerLoad = async () => {
 		date: formatUtcDate(new Date(r.block_off_at)),
 		blockOff: formatUtc(new Date(r.block_off_at)).slice(11),
 		blockOn: formatUtc(new Date(r.block_on_at)).slice(11),
-		tacho: `${r.tacho_start} → ${r.tacho_end}`,
+		billing: billingDetail(r),
 		hours: Number(r.flight_hours).toFixed(2),
+		blockHours: Number(r.block_hours).toFixed(2),
 		route: `${r.departure_airport_code} → ${r.arrival_airport_code}`,
 		landings: `${r.day_landings}/${r.night_landings}`,
 		pob: r.persons_on_board,

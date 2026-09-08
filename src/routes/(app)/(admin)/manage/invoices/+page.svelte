@@ -44,7 +44,7 @@
 						<div class="list-item flight">
 							<span class="list-main">
 								<span class="mono">{f.date} · <span class="tailnum">{f.tail_number}</span> · {f.route}</span>
-								<span class="list-sub">Tacho {f.tacho} · {f.hours} h</span>
+								<span class="list-sub">{f.billing} · {f.hours} h</span>
 							</span>
 							<span class="list-end"><span class="mono">€{f.amount}</span></span>
 						</div>

@@ -105,6 +105,9 @@ Roughly in the order I would do them.
   Helsinki wall-clock in and out (`fromHelsinkiInputValue`,
   `helsinkiDay/Time/Range`). Logbook: UTC only (`toUtcInputValue`,
   `formatUtc`). Nothing else should touch time zones.
+- **Billing basis.** `aircraft.billing_basis` (tacho | airborne) is copied
+  onto each flight; `flight_hours` (billed) and `block_hours` (logbook) are
+  generated columns. Never compute either in application code.
 - **Money.** `numeric` in Postgres, strings from `pg`; format with
   `Number(x).toFixed(2)` at the edge. Invoice line `amount` and
   `flight_hours` are generated columns — never computed in application code.

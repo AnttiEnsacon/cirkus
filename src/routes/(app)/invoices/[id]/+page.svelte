@@ -32,7 +32,7 @@
 		<div class="table-wrap">
 			<table class="table">
 				<thead>
-					<tr><th>Date</th><th>Aircraft</th><th>Route</th><th>Tacho</th><th class="num">Hours</th><th class="num">Rate €/h</th><th class="num">Amount €</th></tr>
+					<tr><th>Date</th><th>Aircraft</th><th>Route</th><th>Basis</th><th class="num">Hours</th><th class="num">Rate €/h</th><th class="num">Amount €</th></tr>
 				</thead>
 				<tbody>
 					{#each data.lines as l (l.id)}
@@ -40,7 +40,7 @@
 							<td class="mono">{l.date}</td>
 							<td class="tailnum">{l.aircraft}</td>
 							<td class="mono">{l.route}</td>
-							<td class="mono">{l.tacho}</td>
+							<td class="mono">{l.billing}</td>
 							<td class="num">{l.hours}</td>
 							<td class="num">{l.rate}</td>
 							<td class="num">{l.amount}</td>
