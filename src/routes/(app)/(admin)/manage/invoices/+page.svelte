@@ -20,7 +20,7 @@
 
 	<p class="section-label">Ready to invoice</p>
 	{#if data.unbilled.length === 0}
-		<div class="card"><p class="muted">Nothing waiting — approve flights under <a href="/manage/flights">Flights</a> first.</p></div>
+		<div class="card"><p class="muted">No unbilled flights.</p></div>
 	{:else}
 		<div class="card stack">
 			<div class="tight-list">
@@ -39,6 +39,16 @@
 							</form>
 						</span>
 					</div>
+					<!-- the flights that would go on this pilot's invoice -->
+					{#each data.flights.filter((f) => f.pilot_id === u.pilot_id) as f (f.id)}
+						<div class="list-item flight">
+							<span class="list-main">
+								<span class="mono">{f.date} · <span class="tailnum">{f.tail_number}</span> · {f.route}</span>
+								<span class="list-sub">Tacho {f.tacho} · {f.hours} h</span>
+							</span>
+							<span class="list-end"><span class="mono">€{f.amount}</span></span>
+						</div>
+					{/each}
 				{/each}
 			</div>
 			<form method="POST" action="?/createAll">
@@ -94,6 +104,16 @@
 	}
 	.amount {
 		font-weight: 700;
+	}
+	.flight {
+		padding-left: 3.25rem;
+		color: var(--ink-soft);
+		font-size: 13px;
+	}
+	@media (max-width: 899px) {
+		.flight {
+			padding-left: 1.5rem;
+		}
 	}
 	.ref {
 		border: 1px solid var(--line-strong);

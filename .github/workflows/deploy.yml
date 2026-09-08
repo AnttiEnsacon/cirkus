@@ -79,6 +79,8 @@ jobs:
               --resource-group ${{ env.RESOURCE_GROUP }} \
               --secrets database-url=${{ secrets.DATABASE_URL }}
 
+            # BODY_SIZE_LIMIT: adapter-node refuses request bodies over 512 KB
+            # by default; receipt photos are bigger (see README, Azure gotchas).
             # --revision-suffix forces a fresh revision on every run, including
             # re-runs of an unchanged commit. Without it Azure treats an
             # identical image tag as "no change" and keeps whatever revision
@@ -86,5 +88,5 @@ jobs:
             az containerapp update \
               --name ${{ env.CONTAINERAPP_NAME }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
-              --set-env-vars DATABASE_URL=secretref:database-url \
+              --set-env-vars DATABASE_URL=secretref:database-url BODY_SIZE_LIMIT=15M \
               --revision-suffix r${{ github.run_number }}-${{ github.run_attempt }}

@@ -1,11 +1,11 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { cancelInvoice, createInvoiceForPilot, markInvoicePaid, unbilledByPilot } from '$lib/server/invoicing';
+import { cancelInvoice, createInvoiceForPilot, markInvoicePaid, unbilledByPilot, unbilledFlights } from '$lib/server/invoicing';
 import { formatUtcDate } from '$lib/server/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const unbilled = await unbilledByPilot();
+	const [unbilled, flights] = await Promise.all([unbilledByPilot(), unbilledFlights()]);
 
 	const rows = await db
 		.selectFrom('invoices')
@@ -42,7 +42,7 @@ export const load: PageServerLoad = async () => {
 		total: Number(r.total_amount).toFixed(2)
 	}));
 
-	return { unbilled, invoices };
+	return { unbilled, flights, invoices };
 };
 
 export const actions: Actions = {

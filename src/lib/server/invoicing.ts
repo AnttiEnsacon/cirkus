@@ -12,7 +12,54 @@ export interface UnbilledSummary {
 	amount: string;
 }
 
-/** Approved, not-yet-billed flights grouped by pilot, priced at today's member rate. */
+export interface UnbilledFlight {
+	id: string;
+	pilot_id: string;
+	date: string;
+	tail_number: string;
+	route: string;
+	tacho: string;
+	hours: string;
+	amount: string;
+}
+
+/**
+ * The individual flights behind unbilledByPilot(), oldest first — what the
+ * admin sees before pressing Create. Same pricing rule as the summary.
+ */
+export async function unbilledFlights(): Promise<UnbilledFlight[]> {
+	const rows = await db
+		.selectFrom('flight_log_entries as f')
+		.innerJoin('aircraft', 'aircraft.id', 'f.aircraft_id')
+		.select([
+			'f.id',
+			'f.pilot_id',
+			'f.block_off_at',
+			'f.tacho_start',
+			'f.tacho_end',
+			'f.flight_hours',
+			'f.departure_airport_code',
+			'f.arrival_airport_code',
+			'aircraft.tail_number',
+			sql<string>`round(f.flight_hours * aircraft.member_rate_per_hour, 2)`.as('amount')
+		])
+		.where('f.status', '=', 'submitted')
+		.orderBy('f.block_off_at', 'asc')
+		.execute();
+
+	return rows.map((r) => ({
+		id: r.id,
+		pilot_id: r.pilot_id,
+		date: formatUtcDate(new Date(r.block_off_at)),
+		tail_number: r.tail_number,
+		route: `${r.departure_airport_code} → ${r.arrival_airport_code}`,
+		tacho: `${r.tacho_start} → ${r.tacho_end}`,
+		hours: Number(r.flight_hours).toFixed(2),
+		amount: Number(r.amount).toFixed(2)
+	}));
+}
+
+/** Not-yet-billed flights grouped by pilot, priced at today's member rate. */
 export async function unbilledByPilot(): Promise<UnbilledSummary[]> {
 	const rows = await db
 		.selectFrom('flight_log_entries as f')
@@ -25,7 +72,7 @@ export async function unbilledByPilot(): Promise<UnbilledSummary[]> {
 			sql<string>`sum(f.flight_hours)`.as('hours'),
 			sql<string>`sum(round(f.flight_hours * aircraft.member_rate_per_hour, 2))`.as('amount')
 		])
-		.where('f.status', '=', 'approved')
+		.where('f.status', '=', 'submitted')
 		.groupBy(['f.pilot_id', 'users.name'])
 		.orderBy('users.name', 'asc')
 		.execute();
@@ -40,7 +87,7 @@ export async function unbilledByPilot(): Promise<UnbilledSummary[]> {
 }
 
 /**
- * Creates one invoice for a pilot covering every approved, unbilled flight
+ * Creates one invoice for a pilot covering every unbilled flight
  * they have, and marks those flights billed. Returns the invoice id, or
  * null if there was nothing to bill. Everything happens in one transaction
  * with an advisory lock so two admins can't hand out the same number.
@@ -63,7 +110,7 @@ export async function createInvoiceForPilot(pilotId: string, createdBy: string):
 				'aircraft.member_rate_per_hour'
 			])
 			.where('f.pilot_id', '=', pilotId)
-			.where('f.status', '=', 'approved')
+			.where('f.status', '=', 'submitted')
 			.orderBy('f.block_off_at', 'asc')
 			.execute();
 
@@ -110,7 +157,7 @@ export async function createInvoiceForPilot(pilotId: string, createdBy: string):
 			.execute();
 
 		// Mark the flights billed — and insist every one of them still was
-		// 'approved', so a concurrent un-approve can't slip a flight through.
+		// 'submitted', so a flight billed concurrently can't be billed twice.
 		const marked = await trx
 			.updateTable('flight_log_entries')
 			.set({ status: 'billed', updated_at: now.toISOString() })
@@ -119,7 +166,7 @@ export async function createInvoiceForPilot(pilotId: string, createdBy: string):
 				'in',
 				flights.map((f) => f.id)
 			)
-			.where('status', '=', 'approved')
+			.where('status', '=', 'submitted')
 			.executeTakeFirst();
 		if (Number(marked.numUpdatedRows) !== flights.length) {
 			throw new Error('A flight changed status while the invoice was being created — nothing was saved. Try again.');
@@ -162,7 +209,7 @@ export async function cancelInvoice(invoiceId: string): Promise<boolean> {
 
 		await trx
 			.updateTable('flight_log_entries')
-			.set({ status: 'approved', updated_at: new Date().toISOString() })
+			.set({ status: 'submitted', updated_at: new Date().toISOString() })
 			.where('id', 'in', (eb) =>
 				eb.selectFrom('invoice_line_items').select('flight_log_id').where('invoice_id', '=', invoiceId)
 			)

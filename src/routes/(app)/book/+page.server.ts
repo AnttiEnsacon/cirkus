@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { fromHelsinkiInputValue, toHelsinkiInputValue, helsinkiTime } from '$lib/server/time';
 import type { Actions, PageServerLoad } from './$types';
@@ -30,18 +30,34 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.orderBy('tail_number', 'asc')
 		.execute();
 
-	const selectedAircraft = aircraft.find((a) => a.id === url.searchParams.get('aircraft')) ?? aircraft[0] ?? null;
+	// ?edit=<id>: the reservation being changed is loaded into the form and
+	// the calendar opens on its week. Own reservations, or any as admin, and
+	// only while it has not ended — the same rule as Cancel.
+	const editId = url.searchParams.get('edit');
+	const editing = editId ? await editableReservation(editId, me) : null;
+	if (editId && !editing) throw redirect(303, '/book');
 
-	// Default selection: the next full hour (Helsinki), or 09:00 the next
-	// morning if that falls outside the grid's hours.
-	const now = new Date();
-	now.setMinutes(0, 0, 0);
-	now.setHours(now.getHours() + 1);
-	let defaultStart = toHelsinkiInputValue(now);
-	const h = Number(defaultStart.slice(11, 13));
-	if (h >= HOUR_END - 1) defaultStart = `${ymdAdd(defaultStart.slice(0, 10), 1)}T09:00`;
-	else if (h < HOUR_START) defaultStart = `${defaultStart.slice(0, 10)}T09:00`;
-	const defaultEnd = `${defaultStart.slice(0, 10)}T${String(Math.min(Number(defaultStart.slice(11, 13)) + 2, HOUR_END)).padStart(2, '0')}:00`;
+	const selectedAircraft =
+		aircraft.find((a) => a.id === (url.searchParams.get('aircraft') ?? editing?.aircraft_id)) ?? aircraft[0] ?? null;
+
+	// Default selection: the reservation being edited, else the next full
+	// hour (Helsinki), or 09:00 the next morning if that falls outside the
+	// grid's hours.
+	let defaultStart: string;
+	let defaultEnd: string;
+	if (editing) {
+		defaultStart = toHelsinkiInputValue(new Date(editing.starts_at));
+		defaultEnd = toHelsinkiInputValue(new Date(editing.ends_at));
+	} else {
+		const now = new Date();
+		now.setMinutes(0, 0, 0);
+		now.setHours(now.getHours() + 1);
+		defaultStart = toHelsinkiInputValue(now);
+		const h = Number(defaultStart.slice(11, 13));
+		if (h >= HOUR_END - 1) defaultStart = `${ymdAdd(defaultStart.slice(0, 10), 1)}T09:00`;
+		else if (h < HOUR_START) defaultStart = `${defaultStart.slice(0, 10)}T09:00`;
+		defaultEnd = `${defaultStart.slice(0, 10)}T${String(Math.min(Number(defaultStart.slice(11, 13)) + 2, HOUR_END)).padStart(2, '0')}:00`;
+	}
 
 	// Which week: ?week=YYYY-MM-DD (any day in it); default the week that
 	// holds the default selection, so the selection is always on screen.
@@ -79,6 +95,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	// One block per (reservation, day) it touches, in wall-clock minutes.
 	const blocks = rows.flatMap((r) => {
+		if (r.id === editing?.id) return []; // shown as the selection instead
 		const starts = new Date(r.starts_at);
 		const ends = new Date(r.ends_at);
 		const out = [];
@@ -105,7 +122,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		pilot: r.pilot_name,
 		mine: r.user_id === me.id,
 		notes: r.notes,
-		past: new Date(r.ends_at) < new Date()
+		past: new Date(r.ends_at) < new Date(),
+		editing: r.id === editing?.id
 	}));
 
 	return {
@@ -122,49 +140,83 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		hourEnd: HOUR_END,
 		defaultStart,
 		defaultEnd,
+		editing: editing ? { id: editing.id, notes: editing.notes ?? '' } : null,
+		updated: url.searchParams.get('updated') === '1',
 		isAdmin: me.role === 'admin'
 	};
 };
 
+/** The reservation if this user may change it (own, or any as admin) and it has not ended. */
+async function editableReservation(id: string, me: { id: string; role: string }) {
+	const r = await db
+		.selectFrom('reservations')
+		.select(['id', 'aircraft_id', 'user_id', 'starts_at', 'ends_at', 'notes'])
+		.where('id', '=', id)
+		.executeTakeFirst();
+	if (!r) return null;
+	if (r.user_id !== me.id && me.role !== 'admin') return null;
+	if (new Date(r.ends_at) < new Date()) return null;
+	return r;
+}
+
+/** Parses the booking form; shared by create and update. */
+function parseBookingForm(form: FormData) {
+	const aircraft_id = String(form.get('aircraft_id') ?? '');
+	const startsRaw = `${form.get('starts_date') ?? ''}T${form.get('starts_time') ?? ''}`;
+	const endsRaw = `${form.get('ends_date') ?? ''}T${form.get('ends_time') ?? ''}`;
+	const notes = String(form.get('notes') ?? '').trim() || null;
+
+	if (!aircraft_id || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsRaw) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsRaw)) {
+		return { error: 'Choose an aircraft and a start and end date and time.' } as const;
+	}
+	const starts_at = fromHelsinkiInputValue(startsRaw);
+	const ends_at = fromHelsinkiInputValue(endsRaw);
+	if (ends_at <= starts_at) return { error: 'End time must be after the start time.' } as const;
+
+	return { values: { aircraft_id, starts_at: starts_at.toISOString(), ends_at: ends_at.toISOString(), notes } } as const;
+}
+
+const isOverlap = (err: unknown) =>
+	// 23P01 = exclusion_violation — overlaps an existing reservation.
+	!!err && typeof err === 'object' && 'code' in err && err.code === '23P01';
+
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		const form = await request.formData();
-		const aircraft_id = String(form.get('aircraft_id') ?? '');
-		const startsRaw = `${form.get('starts_date') ?? ''}T${form.get('starts_time') ?? ''}`;
-		const endsRaw = `${form.get('ends_date') ?? ''}T${form.get('ends_time') ?? ''}`;
-		const notes = String(form.get('notes') ?? '').trim() || null;
-
-		if (!aircraft_id || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startsRaw) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(endsRaw)) {
-			return fail(400, { error: 'Choose an aircraft and a start and end date and time.' });
-		}
-
-		const starts_at = fromHelsinkiInputValue(startsRaw);
-		const ends_at = fromHelsinkiInputValue(endsRaw);
-
-		if (ends_at <= starts_at) {
-			return fail(400, { error: 'End time must be after the start time.' });
-		}
-
+		const parsed = parseBookingForm(await request.formData());
+		if ('error' in parsed) return fail(400, { error: parsed.error });
 		try {
 			await db
 				.insertInto('reservations')
-				.values({
-					aircraft_id,
-					user_id: locals.user!.id,
-					starts_at: starts_at.toISOString(),
-					ends_at: ends_at.toISOString(),
-					notes
-				})
+				.values({ ...parsed.values, user_id: locals.user!.id })
 				.execute();
 		} catch (err) {
-			// 23P01 = exclusion_violation — overlaps an existing reservation.
-			if (err && typeof err === 'object' && 'code' in err && err.code === '23P01') {
-				return fail(400, { error: 'That overlaps with an existing reservation for this aircraft.' });
-			}
+			if (isOverlap(err)) return fail(400, { error: 'That overlaps with an existing reservation for this aircraft.' });
 			throw err;
 		}
-
 		return { success: true };
+	},
+
+	update: async ({ request, locals }) => {
+		const form = await request.formData();
+		const id = String(form.get('reservation_id') ?? '');
+		if (!id || !(await editableReservation(id, locals.user!))) {
+			return fail(403, { error: 'That reservation can no longer be changed.' });
+		}
+		const parsed = parseBookingForm(form);
+		if ('error' in parsed) return fail(400, { error: parsed.error });
+		try {
+			// The exclusion constraint checks overlap against the *other*
+			// reservations; a row never conflicts with its own old range.
+			await db
+				.updateTable('reservations')
+				.set({ ...parsed.values, updated_at: new Date().toISOString() })
+				.where('id', '=', id)
+				.execute();
+		} catch (err) {
+			if (isOverlap(err)) return fail(400, { error: 'That overlaps with an existing reservation for this aircraft.' });
+			throw err;
+		}
+		throw redirect(303, `/book?aircraft=${parsed.values.aircraft_id}&week=${toHelsinkiInputValue(new Date(parsed.values.starts_at)).slice(0, 10)}&updated=1`);
 	},
 
 	cancel: async ({ request, locals }) => {

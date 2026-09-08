@@ -70,7 +70,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			second_name: r.second_name,
 			status: r.status,
 			remarks: r.remarks,
-			canDelete: r.pilot_id === me.id && r.status === 'submitted'
+			canEdit: r.pilot_id === me.id && r.status !== 'billed'
 		};
 	});
 
@@ -99,8 +99,8 @@ export const actions: Actions = {
 
 		if (!entry) return fail(404, { error: 'Entry not found.' });
 		if (entry.pilot_id !== me.id) return fail(403, { error: 'You can only delete your own entries.' });
-		if (entry.status !== 'submitted') {
-			return fail(400, { error: 'This entry has been approved and can no longer be deleted — ask an admin.' });
+		if (entry.status === 'billed') {
+			return fail(400, { error: 'This flight has been invoiced and can no longer be changed.' });
 		}
 
 		await db.deleteFrom('flight_log_entries').where('id', '=', id).execute();

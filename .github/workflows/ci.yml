@@ -1,0 +1,99 @@
+name: CI
+
+# Runs on every branch and pull request. deploy.yml (push to main) is
+# separate and unchanged; main is reached through reviewed branches that
+# have already passed this.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Type-check and migrations
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cirkus
+          POSTGRES_PASSWORD: cirkus
+          POSTGRES_DB: cirkus
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U cirkus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cirkus:cirkus@localhost:5432/cirkus
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      # `npm run lint` (prettier + eslint) is not enforced: the code base was
+      # never Prettier-formatted, so it would fail on every file until a
+      # one-off formatting commit is agreed on.
+
+      # All migrations on a fresh Postgres 16, the way a new container start
+      # would see them. Catches SQL errors before Azure does. It cannot catch
+      # the Azure extension allow-list (see README, Azure gotchas): the stock
+      # image has every contrib extension available.
+      - name: Apply all migrations on a fresh database
+        run: node db/migrate.js
+
+      # A second run must be a no-op: the container CMD runs migrate.js on
+      # every start, so idempotency is part of the contract.
+      - name: Migrations are idempotent
+        run: |
+          out=$(node db/migrate.js)
+          echo "$out"
+          test "$out" = "Already up to date."
+
+  e2e:
+    name: Playwright flows
+    needs: check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cirkus
+          POSTGRES_PASSWORD: cirkus
+          POSTGRES_DB: cirkus
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U cirkus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cirkus:cirkus@localhost:5432/cirkus
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      # playwright.config.ts seeds the database (db/seed-test.js) and starts
+      # `node build` itself, the same way the container runs the app.
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

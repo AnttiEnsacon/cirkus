@@ -10,7 +10,6 @@ export const load: PageServerLoad = async () => {
 		.innerJoin('flight_types', 'flight_types.id', 'f.flight_type_id')
 		.innerJoin('users as pic', 'pic.id', 'f.pilot_id')
 		.leftJoin('users as second', 'second.id', 'f.second_pilot_id')
-		.leftJoin('users as approver', 'approver.id', 'f.approved_by')
 		.select([
 			'f.id',
 			'f.block_off_at',
@@ -28,12 +27,10 @@ export const load: PageServerLoad = async () => {
 			'f.second_pilot_role',
 			'f.status',
 			'f.remarks',
-			'f.approved_at',
 			'aircraft.tail_number',
 			'flight_types.label as flight_type',
 			'pic.name as pic_name',
-			'second.name as second_name',
-			'approver.name as approver_name'
+			'second.name as second_name'
 		])
 		.orderBy('f.block_off_at', 'desc')
 		.limit(200)
@@ -57,48 +54,18 @@ export const load: PageServerLoad = async () => {
 		second: r.second_name ? `${r.second_name} (${r.second_pilot_role === 'instructor' ? 'instr.' : 'backup'})` : '',
 		status: r.status,
 		remarks: r.remarks ?? '',
-		approved: r.approver_name ? `${r.approver_name}, ${formatUtcDate(new Date(r.approved_at!))}` : ''
+		canEdit: r.status !== 'billed'
 	}));
 
-	return {
-		pending: entries.filter((e) => e.status === 'submitted'),
-		others: entries.filter((e) => e.status !== 'submitted')
-	};
+	return { entries };
 };
 
 export const actions: Actions = {
-	approve: async ({ request, locals }) => {
-		const id = String((await request.formData()).get('id') ?? '');
-		if (!id) return fail(400, { error: 'Missing entry id.' });
-		await db
-			.updateTable('flight_log_entries')
-			.set({
-				status: 'approved',
-				approved_by: locals.user!.id,
-				approved_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
-			})
-			.where('id', '=', id)
-			.where('status', '=', 'submitted')
-			.execute();
-	},
-	unapprove: async ({ request }) => {
-		const id = String((await request.formData()).get('id') ?? '');
-		if (!id) return fail(400, { error: 'Missing entry id.' });
-		// Only while not yet billed — billed entries are frozen.
-		await db
-			.updateTable('flight_log_entries')
-			.set({ status: 'submitted', approved_by: null, approved_at: null, updated_at: new Date().toISOString() })
-			.where('id', '=', id)
-			.where('status', '=', 'approved')
-			.execute();
-	},
 	delete: async ({ request }) => {
 		const id = String((await request.formData()).get('id') ?? '');
 		if (!id) return fail(400, { error: 'Missing entry id.' });
-		const entry = await db.selectFrom('flight_log_entries').select('status').where('id', '=', id).executeTakeFirst();
-		if (!entry) return fail(404, { error: 'Entry not found.' });
-		if (entry.status === 'billed') return fail(400, { error: 'Billed entries cannot be deleted.' });
-		await db.deleteFrom('flight_log_entries').where('id', '=', id).execute();
+		// Billed entries are frozen; cancel the invoice first.
+		const r = await db.deleteFrom('flight_log_entries').where('id', '=', id).where('status', '<>', 'billed').executeTakeFirst();
+		if (Number(r.numDeletedRows) !== 1) return fail(400, { error: 'This flight has been invoiced and can no longer be changed.' });
 	}
 };

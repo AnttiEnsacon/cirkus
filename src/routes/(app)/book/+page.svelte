@@ -19,7 +19,12 @@
 	// svelte-ignore state_referenced_locally
 	let endTime = $state(data.defaultEnd.slice(11, 16));
 	// svelte-ignore state_referenced_locally
-	let dayIdx = $state(data.todayIndex >= 0 ? data.todayIndex : 0); // phone: which day is open
+	let dayIdx = $state(dayOfInitial()); // phone: which day is open
+	function dayOfInitial() {
+		// Editing: open the reservation's day; otherwise today.
+		const d = data.editing ? data.days.findIndex((x) => x.ymd === data.defaultStart.slice(0, 10)) : -1;
+		return d >= 0 ? d : data.todayIndex >= 0 ? data.todayIndex : 0;
+	}
 
 	const startsAt = $derived(`${startDate}T${startTime}`);
 	const endsAt = $derived(`${endDate}T${endTime}`);
@@ -53,6 +58,27 @@
 			const dur = wall(endDate, endTime) - wall(lastStart.d, lastStart.t);
 			lastStart = { d, t };
 			if (dur > 0) setEndFromDuration(dur);
+		});
+	});
+
+	// Entering or leaving edit mode (same page, different ?edit) must load
+	// that reservation's times — the "initial values only" rule above is
+	// for paging between weeks, not for this.
+	// svelte-ignore state_referenced_locally
+	let editKey = data.editing?.id ?? null;
+	$effect(() => {
+		const k = data.editing?.id ?? null;
+		const start = data.defaultStart, end = data.defaultEnd;
+		untrack(() => {
+			if (k === editKey) return;
+			editKey = k;
+			startDate = start.slice(0, 10);
+			startTime = start.slice(11, 16);
+			endDate = end.slice(0, 10);
+			endTime = end.slice(11, 16);
+			lastStart = { d: startDate, t: startTime };
+			const d = data.days.findIndex((x) => x.ymd === startDate);
+			if (d >= 0) dayIdx = d;
 		});
 	});
 
@@ -93,7 +119,8 @@
 	const top = (min: number) => Math.max(0, (min / 60 - data.hourStart) * ROW);
 	const height = (a: number, b: number) =>
 		Math.max(8, (Math.min(b, data.hourEnd * 60) - Math.max(a, data.hourStart * 60)) / 60 * ROW);
-	const weekQ = (ymd: string) => `?week=${ymd}&aircraft=${data.selectedAircraftId}`;
+	const editQ = $derived(data.editing ? `&edit=${data.editing.id}` : '');
+	const weekQ = (ymd: string) => `?week=${ymd}&aircraft=${data.selectedAircraftId}${editQ}`;
 </script>
 
 <svelte:head>
@@ -102,15 +129,17 @@
 
 <div class="page">
 	<div class="page-head">
-		<h1>Book a reservation</h1>
+		<h1>{data.editing ? 'Change reservation' : 'Book a reservation'}</h1>
+		{#if data.editing}<a href="?aircraft={data.selectedAircraftId}&week={data.monday}" class="btn btn-secondary sm">Cancel edit</a>{/if}
 	</div>
 
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
 	{#if form?.success}<p class="alert notice">Reservation booked.</p>{/if}
+	{#if data.updated}<p class="alert notice">Reservation updated.</p>{/if}
 
 	<div class="chiprow">
 		{#each data.aircraft as plane (plane.id)}
-			<a href="?aircraft={plane.id}&week={data.monday}" class="chip" class:on={plane.id === data.selectedAircraftId}>
+			<a href="?aircraft={plane.id}&week={data.monday}{editQ}" class="chip" class:on={plane.id === data.selectedAircraftId}>
 				<span class="tailnum">{plane.tail_number}</span> · {plane.type}
 			</a>
 		{/each}
@@ -154,7 +183,7 @@
 						{/each}
 						{#if sel && sel.day === di}
 							<div class="cal-block selected" style="top:{top(sel.startMin)}px;height:{height(sel.startMin, sel.endMin)}px">
-								<span>{startsAt.slice(11, 16)}–{endsAt.slice(11, 16)}</span><span class="who">New</span>
+								<span>{startsAt.slice(11, 16)}–{endsAt.slice(11, 16)}</span><span class="who">{data.editing ? 'Editing' : 'New'}</span>
 							</div>
 						{/if}
 					</div>
@@ -193,8 +222,9 @@
 		</div>
 
 		<!-- ============ form ============ -->
-		<form method="POST" action="?/create" class="stack">
+		<form method="POST" action={data.editing ? '?/update' : '?/create'} class="stack">
 			<input type="hidden" name="aircraft_id" value={data.selectedAircraftId} />
+			{#if data.editing}<input type="hidden" name="reservation_id" value={data.editing.id} />{/if}
 			<div class="card teal stack sel-card">
 				<div class="row between">
 					<div>
@@ -223,8 +253,8 @@
 						</select>
 					</div>
 				</div>
-				<label class="field"><span>Notes (optional)</span><input name="notes" type="text" placeholder="e.g. local flight, EFHK–EFTU" /></label>
-				<button type="submit" class="btn block"><Icon name="calendar" size={18} /> Confirm booking</button>
+				<label class="field"><span>Notes (optional)</span><input name="notes" type="text" value={data.editing?.notes ?? ''} placeholder="e.g. local flight, EFHK–EFTU" /></label>
+				<button type="submit" class="btn block"><Icon name="calendar" size={18} /> {data.editing ? 'Save changes' : 'Confirm booking'}</button>
 			</div>
 
 			{#if data.thisWeek.length > 0}
@@ -237,8 +267,11 @@
 								<span class="list-title mono">{r.when}</span>
 								<span class="list-sub">{r.pilot}{r.mine ? ' (you)' : ''}{r.notes ? ` · ${r.notes}` : ''}</span>
 							</span>
-							{#if (r.mine || data.isAdmin) && !r.past}
-								<button type="submit" formaction="?/cancel" name="id" value={r.id} class="btn btn-danger xs">Cancel</button>
+							{#if r.editing}
+								<span class="chip teal">Editing</span>
+							{:else if (r.mine || data.isAdmin) && !r.past}
+								<a href="?aircraft={data.selectedAircraftId}&week={data.monday}&edit={r.id}" class="btn btn-secondary xs">Edit</a>
+								<button type="submit" formaction="?/cancel" name="id" value={r.id} class="btn btn-danger xs" formnovalidate>Cancel</button>
 							{/if}
 						</div>
 					{/each}

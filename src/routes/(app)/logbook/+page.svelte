@@ -37,6 +37,7 @@
 					</span>
 					<span class="list-end">
 						<span class="chip" class:teal={e.role === 'PIC'} class:amber={e.role !== 'PIC'}>{e.role}</span>
+						{#if e.canEdit}<a href="/log/{e.id}" class="btn btn-secondary xs">Edit</a>{/if}
 					</span>
 				</div>
 			{/each}
@@ -59,7 +60,8 @@
 								<td>{e.role === 'PIC' ? (e.second_name ?? '') : e.pic_name}</td>
 								<td><span class="status {e.status}">{e.status}</span></td>
 								<td class="actions">
-									{#if e.canDelete}
+									{#if e.canEdit}
+										<a href="/log/{e.id}" class="btn btn-secondary xs">Edit</a>
 										<form method="POST" action="?/delete">
 											<input type="hidden" name="id" value={e.id} />
 											<button type="submit" class="btn btn-danger xs">Delete</button>
