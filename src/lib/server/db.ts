@@ -190,6 +190,20 @@ export interface ReceiptImagesTable {
 	created_at: ColumnType<Date, string | undefined, never>;
 }
 
+export interface UserActionsTable {
+	id: Generated<number>;
+	at: ColumnType<Date, string | undefined, never>;
+	user_id: string | null;
+	action: string;
+	route: string | null;
+	ok: Generated<boolean>;
+	entity_type: string | null;
+	entity_id: string | null;
+	details: ColumnType<Record<string, unknown> | null, string | null, string | null>;
+	ip: string | null;
+	user_agent: string | null;
+}
+
 // Table interfaces are added here as migrations introduce them.
 export interface Database {
 	schema_info: {
@@ -210,6 +224,7 @@ export interface Database {
 	expenses: ExpensesTable;
 	expense_lines: ExpenseLinesTable;
 	receipt_images: ReceiptImagesTable;
+	user_actions: UserActionsTable;
 }
 
 const pool = new Pool({

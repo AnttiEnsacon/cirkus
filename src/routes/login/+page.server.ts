@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { dev } from '$app/environment';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
@@ -9,7 +10,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async (event) => {
+		const { request, cookies } = event;
 		const form = await request.formData();
 		const email = String(form.get('email') ?? '')
 			.trim()
@@ -27,6 +29,7 @@ export const actions: Actions = {
 			.executeTakeFirst();
 
 		if (!user || !user.password_hash) {
+			audit(event, { action: 'auth.login_failed', userId: user?.id ?? null, ok: false, details: { email, reason: user ? 'no password set' : 'unknown email' } });
 			return fail(400, {
 				error: user
 					? 'No password is set on this account yet — ask an admin to set one for you.'
@@ -37,10 +40,12 @@ export const actions: Actions = {
 
 		const valid = await verifyPassword(password, user.password_hash);
 		if (!valid) {
+			audit(event, { action: 'auth.login_failed', userId: user.id, ok: false, details: { email, reason: 'wrong password' } });
 			return fail(400, { error: 'Incorrect email or password.', email });
 		}
 
 		if (user.status !== 'approved') {
+			audit(event, { action: 'auth.login_failed', userId: user.id, ok: false, details: { email, reason: user.status } });
 			return fail(400, {
 				error:
 					user.status === 'pending'
@@ -50,6 +55,7 @@ export const actions: Actions = {
 			});
 		}
 
+		audit(event, { action: 'auth.login', userId: user.id, details: { email } });
 		const { token, expiresAt } = await createSession(user.id);
 		await purgeExpiredSessions();
 		cookies.set(SESSION_COOKIE, token, {

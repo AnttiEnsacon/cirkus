@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { formatUtc, formatUtcDate } from '$lib/server/time';
 import { billingDetail } from '$lib/server/flightLog';
@@ -67,9 +68,11 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	delete: async ({ request }) => {
-		const id = String((await request.formData()).get('id') ?? '');
+	delete: async (event) => {
+		const id = String((await event.request.formData()).get('id') ?? '');
 		if (!id) return fail(400, { error: 'Missing entry id.' });
+		const who = await db.selectFrom('flight_log_entries as f').innerJoin('users', 'users.id', 'f.pilot_id').select('users.name').where('f.id', '=', id).executeTakeFirst();
+		audit(event, { action: 'flight.delete', entity: ['flight', id], details: { for: who?.name } });
 		// Billed entries are frozen; cancel the invoice first.
 		const r = await db.deleteFrom('flight_log_entries').where('id', '=', id).where('status', '<>', 'billed').executeTakeFirst();
 		if (Number(r.numDeletedRows) !== 1) return fail(400, { error: 'This flight has been invoiced and can no longer be changed.' });

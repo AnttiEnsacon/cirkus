@@ -82,6 +82,11 @@
 				<span class="list-main"><span class="list-title">Accounts</span></span>
 				<Icon name="chevron" />
 			</a>
+			<a href="/manage/activity" class="list-item link">
+				<span class="list-icon"><Icon name="clock" /></span>
+				<span class="list-main"><span class="list-title">Activity</span></span>
+				<Icon name="chevron" />
+			</a>
 		</div>
 	{/if}
 

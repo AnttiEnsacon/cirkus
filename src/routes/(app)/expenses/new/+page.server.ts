@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { activeCategories, parseExpenseForm, parseUploadedImages, postedLines } from '$lib/server/expenses';
 import { formatUtcDate } from '$lib/server/time';
@@ -20,7 +21,8 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	default: async (event) => {
+		const { request, locals } = event;
 		const me = locals.user!;
 		const form = await request.formData();
 		const values = Object.fromEntries([...form.entries()].filter(([, v]) => typeof v === 'string'));
@@ -35,6 +37,7 @@ export const actions: Actions = {
 		await db.transaction().execute(async (trx) => {
 			const { lines, ...expense } = parsed.values;
 			const e = await trx.insertInto('expenses').values({ ...expense, user_id: me.id }).returning('id').executeTakeFirstOrThrow();
+			audit(event, { action: 'expense.create', entity: ['expense', e.id], details: { vendor: expense.vendor, total: expense.total_amount.toFixed(2) } });
 			await trx
 				.insertInto('expense_lines')
 				.values(lines.map((l, position) => ({ ...l, expense_id: e.id, position })))

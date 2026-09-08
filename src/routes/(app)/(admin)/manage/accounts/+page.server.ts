@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { hashPassword } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
@@ -17,7 +18,8 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	add: async ({ request }) => {
+	add: async (event) => {
+		const { request } = event;
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
 		const email = String(form.get('email') ?? '')
@@ -44,12 +46,15 @@ export const actions: Actions = {
 			})
 			.execute();
 
+		audit(event, { action: 'user.add', details: { target: name, email, role } });
 		return { added: name };
 	},
 
-	update: async ({ request }) => {
+	update: async (event) => {
+		const { request } = event;
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '');
+		audit(event, { action: 'user.update', entity: ['user', id] });
 		const name = String(form.get('name') ?? '').trim();
 		const email = String(form.get('email') ?? '')
 			.trim()
@@ -76,9 +81,11 @@ export const actions: Actions = {
 			.execute();
 	},
 
-	setPassword: async ({ request }) => {
+	setPassword: async (event) => {
+		const { request } = event;
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '');
+		audit(event, { action: 'user.set_password', entity: ['user', id] });
 		const password = String(form.get('password') ?? '');
 
 		if (!id || password.length < 8) {

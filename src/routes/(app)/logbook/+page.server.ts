@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { formatUtc, formatUtcDate } from '$lib/server/time';
 import { billingDetail } from '$lib/server/flightLog';
@@ -92,9 +93,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
-	delete: async ({ request, locals }) => {
+	delete: async (event) => {
+		const { request, locals } = event;
 		const me = locals.user!;
 		const id = String((await request.formData()).get('id') ?? '');
+		audit(event, { action: 'flight.delete', entity: ['flight', id] });
 		if (!id) return fail(400, { error: 'Missing entry id.' });
 
 		const entry = await db

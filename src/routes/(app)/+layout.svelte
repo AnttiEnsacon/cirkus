@@ -20,7 +20,8 @@
 		{ href: '/manage/fleet', label: 'Fleet', icon: 'plane' },
 		{ href: '/manage/flight-types', label: 'Flight types', icon: 'list' },
 		{ href: '/manage/expense-categories', label: 'Expense categories', icon: 'list' },
-		{ href: '/manage/accounts', label: 'Accounts', icon: 'users' }
+		{ href: '/manage/accounts', label: 'Accounts', icon: 'users' },
+		{ href: '/manage/activity', label: 'Activity', icon: 'clock' }
 	];
 	const tabs = [...pilotNav.slice(0, 4), { href: '/more', label: 'More', icon: 'more' }];
 

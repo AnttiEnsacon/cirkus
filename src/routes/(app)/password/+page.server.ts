@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { hashPassword, verifyPassword } from '$lib/server/auth';
 import type { Actions, PageServerLoad } from './$types';
@@ -6,7 +7,9 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ parent }) => parent();
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	default: async (event) => {
+		const { request, locals } = event;
+		audit(event, { action: 'auth.password_change' });
 		const form = await request.formData();
 		const current = String(form.get('current') ?? '');
 		const next = String(form.get('next') ?? '');

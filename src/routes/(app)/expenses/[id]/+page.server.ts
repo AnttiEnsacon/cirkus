@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { assertCanSee, canEdit, loadExpense, loadImageIds, loadLines } from '$lib/server/expenses';
 import { formatUtc, formatUtcDate } from '$lib/server/time';
@@ -31,10 +32,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 };
 
 export const actions: Actions = {
-	delete: async ({ locals, params }) => {
+	delete: async (event) => {
+		const { locals, params } = event;
 		const me = locals.user!;
 		const e = await loadExpense(params.id);
 		assertCanSee(e, me);
+		audit(event, { action: 'expense.delete', entity: ['expense', e.id], details: { vendor: e.vendor, total: Number(e.total_amount).toFixed(2), ...(e.user_id !== me.id ? { for: e.pilot_name } : {}) } });
 		// Paid receipts are frozen; the status check is in the delete itself.
 		const r = await db.deleteFrom('expenses').where('id', '=', e.id).where('status', '<>', 'paid').executeTakeFirst();
 		if (Number(r.numDeletedRows) !== 1) return fail(400, { error: 'This receipt has been paid and can no longer be changed.' });

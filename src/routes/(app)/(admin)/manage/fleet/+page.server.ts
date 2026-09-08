@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db, type BillingBasis } from '$lib/server/db';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -43,8 +44,8 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = {
-	add: async ({ request }) => {
-		const form = await request.formData();
+	add: async (event) => {
+		const form = await event.request.formData();
 		const tail_number = String(form.get('tail_number') ?? '')
 			.trim()
 			.toUpperCase();
@@ -62,6 +63,7 @@ export const actions: Actions = {
 		const billing = readBilling(form);
 		if ('error' in billing) return fail(400, { error: billing.error });
 
+		audit(event, { action: 'aircraft.add', details: { tail: tail_number, ...billing } });
 		try {
 			await db
 				.insertInto('aircraft')
@@ -72,8 +74,8 @@ export const actions: Actions = {
 		}
 	},
 
-	update: async ({ request }) => {
-		const form = await request.formData();
+	update: async (event) => {
+		const form = await event.request.formData();
 		const id = String(form.get('id') ?? '');
 		const type = String(form.get('type') ?? '').trim();
 		const seats = Number(form.get('seats'));
@@ -89,6 +91,7 @@ export const actions: Actions = {
 		const billing = readBilling(form);
 		if ('error' in billing) return fail(400, { error: billing.error });
 
+		audit(event, { action: 'aircraft.update', entity: ['aircraft', id], details: { member_rate_per_hour, guest_rate_per_hour, ...billing } });
 		// Existing flights keep the basis they were logged under (it is
 		// copied onto each entry); this only affects flights logged from now on.
 		await db
@@ -105,9 +108,10 @@ export const actions: Actions = {
 			.execute();
 	},
 
-	updateOwners: async ({ request }) => {
-		const form = await request.formData();
+	updateOwners: async (event) => {
+		const form = await event.request.formData();
 		const aircraftId = String(form.get('aircraft_id') ?? '');
+		audit(event, { action: 'aircraft.owners', entity: ['aircraft', aircraftId] });
 		const ownerIds = form.getAll('owner_ids').map(String);
 
 		if (!aircraftId) return fail(400, { error: 'Missing aircraft id.' });

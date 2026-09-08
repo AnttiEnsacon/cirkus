@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { linesSummary } from '$lib/server/expenses';
 import { formatUtc, formatUtcDate } from '$lib/server/time';
@@ -55,12 +56,25 @@ export const load: PageServerLoad = async () => {
 	};
 };
 
+/** Pilot, vendor and total, for the log. */
+async function expenseSummary(id: string) {
+	const e = await db
+		.selectFrom('expenses')
+		.innerJoin('users', 'users.id', 'expenses.user_id')
+		.select(['expenses.vendor', 'expenses.total_amount', 'users.name'])
+		.where('expenses.id', '=', id)
+		.executeTakeFirst();
+	return e ? { for: e.name, vendor: e.vendor, total: Number(e.total_amount).toFixed(2) } : {};
+}
+
 export const actions: Actions = {
-	markPaid: async ({ request, locals }) => {
+	markPaid: async (event) => {
+		const { request, locals } = event;
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '');
 		const reference = String(form.get('reference') ?? '').trim() || null;
 		if (!id) return fail(400, { error: 'Missing receipt.' });
+		audit(event, { action: 'expense.mark_paid', entity: ['expense', id], details: { ...(await expenseSummary(id)), reference } });
 		const r = await db
 			.updateTable('expenses')
 			.set({ status: 'paid', paid_at: new Date().toISOString(), paid_by: locals.user!.id, paid_reference: reference, rejected_reason: null, updated_at: new Date().toISOString() })
@@ -69,11 +83,12 @@ export const actions: Actions = {
 			.executeTakeFirst();
 		if (Number(r.numUpdatedRows) !== 1) return fail(400, { error: 'Only a submitted receipt can be marked paid.' });
 	},
-	reject: async ({ request }) => {
-		const form = await request.formData();
+	reject: async (event) => {
+		const form = await event.request.formData();
 		const id = String(form.get('id') ?? '');
 		const reason = String(form.get('reason') ?? '').trim();
 		if (!id) return fail(400, { error: 'Missing receipt.' });
+		audit(event, { action: 'expense.reject', entity: ['expense', id], details: { ...(await expenseSummary(id)), reason } });
 		if (!reason) return fail(400, { error: 'Give a reason for rejecting — the pilot will see it.' });
 		const r = await db
 			.updateTable('expenses')

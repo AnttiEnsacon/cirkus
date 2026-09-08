@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { activeCategories, assertCanSee, canEdit, loadExpense, loadImageIds, loadLines, parseExpenseForm, parseUploadedImages, postedLines } from '$lib/server/expenses';
 import { formatUtcDate } from '$lib/server/time';
@@ -30,7 +31,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals, params }) => {
+	default: async (event) => {
+		const { request, locals, params } = event;
 		const me = locals.user!;
 		const e = await loadExpense(params.id);
 		assertCanSee(e, me);
@@ -73,6 +75,7 @@ export const actions: Actions = {
 			}
 			return true;
 		});
+		audit(event, { action: 'expense.update', entity: ['expense', e.id], details: { vendor: parsed.values.vendor, total: parsed.values.total_amount.toFixed(2), ...(e.user_id !== me.id ? { for: e.pilot_name } : {}) } });
 		if (!updated) return bad('This receipt has been paid and can no longer be changed.', 409);
 
 		throw redirect(303, e.user_id === me.id ? '/expenses?saved=1' : '/manage/expenses');

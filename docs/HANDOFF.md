@@ -105,6 +105,8 @@ Roughly in the order I would do them.
   Helsinki wall-clock in and out (`fromHelsinkiInputValue`,
   `helsinkiDay/Time/Range`). Logbook: UTC only (`toUtcInputValue`,
   `formatUtc`). Nothing else should touch time zones.
+- **Activity log.** Every POST is logged by the hook; call `audit(event, …)`
+  in an action to name what it did (see `audit.ts`). Never log reads.
 - **Billing basis.** `aircraft.billing_basis` (tacho | airborne) is copied
   onto each flight; `flight_hours` (billed) and `block_hours` (logbook) are
   generated columns. Never compute either in application code.

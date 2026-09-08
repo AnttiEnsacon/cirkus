@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
-import { ensureAirports, flightFormData, parseFlightForm } from '$lib/server/flightLog';
+import { ensureAirports, flightFormData, flightSummary, parseFlightForm } from '$lib/server/flightLog';
 import { toUtcInputValue } from '$lib/server/time';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -66,7 +67,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals, params }) => {
+	default: async (event) => {
+		const { request, locals, params } = event;
 		const me = locals.user!;
 		const entry = await editableEntry(params.id, me);
 		const form = await request.formData();
@@ -84,6 +86,11 @@ export const actions: Actions = {
 				.where('status', '<>', 'billed')
 				.executeTakeFirst();
 			return Number(r.numUpdatedRows) === 1;
+		});
+		audit(event, {
+			action: 'flight.update',
+			entity: ['flight', entry.id],
+			details: { ...flightSummary(parsed.values), ...(entry.pilot_id !== me.id ? { for: entry.pilot_name } : {}) }
 		});
 		if (!updated) {
 			return fail(409, { error: 'This flight has been invoiced and can no longer be changed.', values: Object.fromEntries(form.entries()) });

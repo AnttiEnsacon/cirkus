@@ -1,4 +1,5 @@
 import { fail } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { sql } from 'kysely';
 import { db } from '$lib/server/db';
 import type { Actions, PageServerLoad } from './$types';
@@ -33,8 +34,9 @@ function read(form: FormData) {
 }
 
 export const actions: Actions = {
-	add: async ({ request }) => {
-		const r = read(await request.formData());
+	add: async (event) => {
+		const r = read(await event.request.formData());
+		if (!('error' in r)) audit(event, { action: 'flight_type.add', details: { code: r.code } });
 		if ('error' in r) return fail(400, { error: r.error });
 		try {
 			await db.insertInto('flight_types').values({ ...r }).execute();
@@ -42,10 +44,11 @@ export const actions: Actions = {
 			return fail(400, { error: `A flight type with abbreviation ${r.code} already exists.` });
 		}
 	},
-	update: async ({ request }) => {
-		const form = await request.formData();
+	update: async (event) => {
+		const form = await event.request.formData();
 		const id = String(form.get('id') ?? '');
 		const r = read(form);
+		if (!('error' in r)) audit(event, { action: 'flight_type.update', entity: ['flight_type', id], details: { code: r.code } });
 		if (!id) return fail(400, { error: 'Missing id.' });
 		if ('error' in r) return fail(400, { error: r.error });
 		try {
@@ -54,13 +57,15 @@ export const actions: Actions = {
 			return fail(400, { error: `A flight type with abbreviation ${r.code} already exists.` });
 		}
 	},
-	toggle: async ({ request }) => {
-		const id = String((await request.formData()).get('id') ?? '');
+	toggle: async (event) => {
+		const id = String((await event.request.formData()).get('id') ?? '');
+		audit(event, { action: 'flight_type.toggle', entity: ['flight_type', id] });
 		if (!id) return fail(400, { error: 'Missing id.' });
 		await db.updateTable('flight_types').set({ is_active: sql`not is_active` }).where('id', '=', id).execute();
 	},
-	delete: async ({ request }) => {
-		const id = String((await request.formData()).get('id') ?? '');
+	delete: async (event) => {
+		const id = String((await event.request.formData()).get('id') ?? '');
+		audit(event, { action: 'flight_type.delete', entity: ['flight_type', id] });
 		if (!id) return fail(400, { error: 'Missing id.' });
 		const used = await db.selectFrom('flight_log_entries').select('id').where('flight_type_id', '=', id).limit(1).executeTakeFirst();
 		if (used) return fail(400, { error: 'This type is used by logged flights — deactivate it instead of deleting.' });

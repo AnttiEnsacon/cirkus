@@ -35,6 +35,7 @@ try {
 	await client.query('delete from flight_log_entries');
 	await client.query('delete from reservations');
 	await client.query('delete from sessions');
+	await client.query('delete from user_actions');
 	// A second aircraft, billed by airborne time, no Tacho recorded — so the
 	// flows cover both bases. (Not in a migration: test data only.)
 	await client.query(

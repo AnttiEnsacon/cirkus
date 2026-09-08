@@ -24,6 +24,7 @@ Reservation, logbook and billing system for **KML Aviation Oy** — one aircraft
 | See own invoices, print one | pilots | `/invoices` |
 | Post a receipt (photo, total split by category) to be paid back | pilots | `/expenses` |
 | Pay back receipts by bank transfer, mark paid or reject | admins | `/manage/expenses`, `/manage/expense-categories` |
+| Activity log: every sign-in, sign-out and write, with IP | admins | `/manage/activity` |
 
 The process is reservation → flight log entry → invoice. There is no
 approval step (it existed in the MVP and was dropped in Phase 07 after trial
@@ -172,6 +173,12 @@ az postgres flexible-server show --resource-group ensacon-ts-rg --name ensacon-t
   Each flight remembers the basis it was logged under, so changing a
   plane's setting later only affects new flights. The pilot's logbook
   shows block hours for every aircraft; invoices use the billing basis.
+- **Activity:** every sign-in (including failed ones), sign-out and
+  form submission is recorded in `user_actions` — who, when, from which IP
+  and browser, what it touched — by `src/hooks.server.ts`, with the
+  important actions adding detail through `audit()` in
+  `src/lib/server/audit.ts`. Admins read it under *Activity*; the table is
+  append-only and kept indefinitely. Nobody else can see it.
 - **Expenses:** a pilot posts a receipt under *Expenses* (photo, total,
   lines by category). Under *Admin → Expenses* look at the photo, pay by
   bank transfer, then *Mark paid* with the reference — or *Reject* with a

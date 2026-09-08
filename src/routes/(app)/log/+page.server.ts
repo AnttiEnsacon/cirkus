@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
-import { ensureAirports, flightFormData, parseFlightForm } from '$lib/server/flightLog';
+import { ensureAirports, flightFormData, flightSummary, parseFlightForm } from '$lib/server/flightLog';
 import { toUtcInputValue } from '$lib/server/time';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -25,7 +26,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, locals }) => {
+	default: async (event) => {
+		const { request, locals } = event;
 		const me = locals.user!;
 		const form = await request.formData();
 		const parsed = await parseFlightForm(form, me.id);
@@ -33,10 +35,12 @@ export const actions: Actions = {
 
 		await db.transaction().execute(async (trx) => {
 			await ensureAirports(trx, [parsed.values.departure_airport_code, parsed.values.arrival_airport_code]);
-			await trx
+			const f = await trx
 				.insertInto('flight_log_entries')
 				.values({ ...parsed.values, pilot_id: me.id })
-				.execute();
+				.returning('id')
+				.executeTakeFirstOrThrow();
+			audit(event, { action: 'flight.create', entity: ['flight', f.id], details: flightSummary(parsed.values) });
 		});
 
 		throw redirect(303, '/logbook?saved=1');

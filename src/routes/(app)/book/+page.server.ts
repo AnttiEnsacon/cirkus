@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
-import { fromHelsinkiInputValue, toHelsinkiInputValue, helsinkiTime } from '$lib/server/time';
+import { fromHelsinkiInputValue, toHelsinkiInputValue, helsinkiTime, helsinkiRange } from '$lib/server/time';
 import type { Actions, PageServerLoad } from './$types';
 
 // The calendar shows 06:00–22:00 Helsinki time in one-hour rows.
@@ -176,19 +177,27 @@ function parseBookingForm(form: FormData) {
 	return { values: { aircraft_id, starts_at: starts_at.toISOString(), ends_at: ends_at.toISOString(), notes } } as const;
 }
 
+/** Helsinki range for the log. */
+function bookingSummary(v: { starts_at: string; ends_at: string }) {
+	return { when: helsinkiRange(new Date(v.starts_at), new Date(v.ends_at)) };
+}
+
 const isOverlap = (err: unknown) =>
 	// 23P01 = exclusion_violation — overlaps an existing reservation.
 	!!err && typeof err === 'object' && 'code' in err && err.code === '23P01';
 
 export const actions: Actions = {
-	create: async ({ request, locals }) => {
+	create: async (event) => {
+		const { request, locals } = event;
 		const parsed = parseBookingForm(await request.formData());
 		if ('error' in parsed) return fail(400, { error: parsed.error });
 		try {
-			await db
+			const r = await db
 				.insertInto('reservations')
 				.values({ ...parsed.values, user_id: locals.user!.id })
-				.execute();
+				.returning('id')
+				.executeTakeFirstOrThrow();
+			audit(event, { action: 'reservation.create', entity: ['reservation', r.id], details: bookingSummary(parsed.values) });
 		} catch (err) {
 			if (isOverlap(err)) return fail(400, { error: 'That overlaps with an existing reservation for this aircraft.' });
 			throw err;
@@ -196,15 +205,22 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	update: async ({ request, locals }) => {
+	update: async (event) => {
+		const { request, locals } = event;
 		const form = await request.formData();
 		const id = String(form.get('reservation_id') ?? '');
-		if (!id || !(await editableReservation(id, locals.user!))) {
+		const existing = id ? await editableReservation(id, locals.user!) : null;
+		if (!existing) {
 			return fail(403, { error: 'That reservation can no longer be changed.' });
 		}
 		const parsed = parseBookingForm(form);
 		if ('error' in parsed) return fail(400, { error: parsed.error });
 		try {
+			audit(event, {
+				action: 'reservation.update',
+				entity: ['reservation', id],
+				details: { ...bookingSummary(parsed.values), ...(existing.user_id !== locals.user!.id ? { for: existing.user_id } : {}) }
+			});
 			// The exclusion constraint checks overlap against the *other*
 			// reservations; a row never conflicts with its own old range.
 			await db
@@ -219,9 +235,11 @@ export const actions: Actions = {
 		throw redirect(303, `/book?aircraft=${parsed.values.aircraft_id}&week=${toHelsinkiInputValue(new Date(parsed.values.starts_at)).slice(0, 10)}&updated=1`);
 	},
 
-	cancel: async ({ request, locals }) => {
+	cancel: async (event) => {
+		const { request, locals } = event;
 		const id = String((await request.formData()).get('id') ?? '');
 		if (!id) return fail(400, { error: 'Missing reservation id.' });
+		audit(event, { action: 'reservation.cancel', entity: ['reservation', id] });
 
 		const reservation = await db.selectFrom('reservations').select(['user_id']).where('id', '=', id).executeTakeFirst();
 		if (!reservation) return fail(404, { error: 'Reservation not found.' });

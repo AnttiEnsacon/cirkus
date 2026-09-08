@@ -244,3 +244,15 @@ export function billingDetail(f: {
 export function billingLabel(basis: BillingBasis): string {
 	return basis === 'airborne' ? 'airborne' : 'Tacho';
 }
+
+/** The few facts about a flight worth keeping in the activity log. */
+export function flightSummary(v: Pick<FlightValues, 'block_off_at' | 'departure_airport_code' | 'arrival_airport_code' | 'billing_basis' | 'tacho_start' | 'tacho_end' | 'takeoff_at' | 'landing_at'> & { aircraft_id?: string }) {
+	return {
+		date: v.block_off_at.slice(0, 10),
+		route: `${v.departure_airport_code}→${v.arrival_airport_code}`,
+		billing:
+			v.billing_basis === 'airborne'
+				? `T/O ${v.takeoff_at?.slice(11, 16)}Z → LDG ${v.landing_at?.slice(11, 16)}Z`
+				: `Tacho ${v.tacho_start} → ${v.tacho_end}`
+	};
+}
