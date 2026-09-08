@@ -51,19 +51,23 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.executeTakeFirst()
 	]);
 
-	let admin: { pendingAccounts: number; pendingFlights: number; unbilled: string } | null = null;
+	let admin: { pendingAccounts: number; unbilled: string; expenses: string } | null = null;
 	if (me.role === 'admin') {
-		const [accounts, flights, unbilled] = await Promise.all([
+		const [accounts, unbilled, expenses] = await Promise.all([
 			db.selectFrom('users').select(sql<number>`count(*)::int`.as('n')).where('status', '=', 'pending').executeTakeFirstOrThrow(),
-			db.selectFrom('flight_log_entries').select(sql<number>`count(*)::int`.as('n')).where('status', '=', 'submitted').executeTakeFirstOrThrow(),
 			db
 				.selectFrom('flight_log_entries as f')
 				.innerJoin('aircraft', 'aircraft.id', 'f.aircraft_id')
 				.select(sql<string>`coalesce(sum(round(f.flight_hours * aircraft.member_rate_per_hour, 2)), 0)`.as('amount'))
-				.where('f.status', '=', 'approved')
+				.where('f.status', '=', 'submitted')
+				.executeTakeFirstOrThrow(),
+			db
+				.selectFrom('expenses')
+				.select(sql<string>`coalesce(sum(total_amount), 0)`.as('amount'))
+				.where('status', '=', 'submitted')
 				.executeTakeFirstOrThrow()
 		]);
-		admin = { pendingAccounts: accounts.n, pendingFlights: flights.n, unbilled: Number(unbilled.amount).toFixed(2) };
+		admin = { pendingAccounts: accounts.n, unbilled: Number(unbilled.amount).toFixed(2), expenses: Number(expenses.amount).toFixed(2) };
 	}
 
 	const fmtRange = helsinkiRange;

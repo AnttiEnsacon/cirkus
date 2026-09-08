@@ -12,14 +12,18 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
-		"migrate": "node db/migrate.js"
+		"migrate": "node db/migrate.js",
+		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
+		"@playwright/test": "^1.63.0",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"@types/bcryptjs": "^2.4.6",
 		"@types/node": "^22",
+		"@types/pg": "^8.11.10",
 		"eslint": "^10.4.1",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
@@ -30,13 +34,12 @@
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
-		"vite": "^8.0.16",
-		"@types/pg": "^8.11.10",
-		"@types/bcryptjs": "^2.4.6"
+		"vite": "^8.0.16"
 	},
 	"dependencies": {
+		"bcryptjs": "^2.4.3",
 		"kysely": "^0.28.7",
 		"pg": "^8.13.3",
-		"bcryptjs": "^2.4.3"
+		"sharp": "^0.35.4"
 	}
 }

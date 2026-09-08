@@ -18,10 +18,18 @@ Reservation, logbook and billing system for **KML Aviation Oy** — one aircraft
 | Accounts: edit name/email/role/status, set passwords | admins | `/manage/accounts` |
 | Fleet: aircraft, seats, member & guest hourly rates, co-owners | admins | `/manage/fleet` |
 | Book the aircraft (Helsinki local time, no double-booking) | pilots | `/book` |
-| Log a flight (UTC, Hobbs-based), personal logbook | pilots | `/log`, `/logbook` |
-| Approve logged flights | admins | `/manage/flights` |
+| Log a flight (UTC, Tacho-based), personal logbook | pilots | `/log`, `/logbook` |
+| See, correct or delete any unbilled flight | admins | `/manage/flights` |
 | Create invoices on demand, mark paid, cancel | admins | `/manage/invoices` |
 | See own invoices, print one | pilots | `/invoices` |
+| Post a receipt (photo, total split by category) to be paid back | pilots | `/expenses` |
+| Pay back receipts by bank transfer, mark paid or reject | admins | `/manage/expenses`, `/manage/expense-categories` |
+
+The process is reservation → flight log entry → invoice. There is no
+approval step (it existed in the MVP and was dropped in Phase 07 after trial
+use): a flight is *submitted* when the pilot saves it and *billed* once it is
+on an invoice. Until billed, the pilot who logged it or an admin can edit or
+delete it; cancelling the invoice unfreezes its flights.
 
 Out of scope for this MVP, on purpose: third-party customers and the guest
 rate, scheduled/automatic invoicing, VAT lines, fuel credits, email (password
@@ -44,6 +52,25 @@ npm run dev                      # http://localhost:5173
 npm run check                    # type-check (CI runs this too)
 ```
 
+### End-to-end tests
+
+Four Playwright flows (book → edit → cancel; log → correct; invoice
+lifecycle; expense → pay back / reject) in `tests/e2e/`, run against the **built** app on a throwaway
+database. They wipe reservations, flights and invoices, and refuse to run
+against anything on `azure.com`.
+
+```powershell
+$env:DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/cirkus_test'
+npx playwright install chromium  # once
+npm run build
+npm run test:e2e
+```
+
+Each flow also saves screenshots of its last screen at 390 px and 1440 px
+under `test-results/screens/` — the review step from the handoff, for free.
+CI (`ci.yml`) runs the same flows after the migration job and uploads
+`test-results/` as an artifact.
+
 To reach the Azure database from your own machine the server firewall needs
 your IP (see *Azure gotchas*). The session cookie is only `secure` in
 production, so plain `http://localhost` logins work.
@@ -52,7 +79,9 @@ production, so plain `http://localhost` logins work.
 
 Push to `main`. `.github/workflows/deploy.yml` then:
 
-1. `npm ci && npm run check` — a type error stops here.
+1. `npm ci && npm run check` — a type error stops here. (`ci.yml` runs on
+   every branch before that: type-check, and all migrations applied
+   twice on a fresh Postgres 16 — the second run must be a no-op.)
 2. Builds the Docker image and pushes it to `ghcr.io/<owner>/cirkus:<sha>`
    (the package is public so Container Apps can pull it without a stored token).
 3. Logs in to Azure with OIDC (no secret stored — a federated credential on
@@ -82,10 +111,17 @@ green in Actions but the app doesn't change.
   needs an extension:
   `az postgres flexible-server parameter set --resource-group ensacon-ts-rg --server-name ensacon-ts-pg --name azure.extensions --value btree_gist,<new>`
   (the value *replaces* the list). Verify with `show azure.extensions;`.
+  The CI migration job runs on the stock `postgres:16` image, where every
+  contrib extension is available, so it will *not* catch a missing
+  allow-list entry.
 - **Firewall.** "Allow Azure services" (rule `AllowAzureServices`, 0.0.0.0) lets
   the Container App in. Your own machine needs its own rule
   (`AllowMyIP`); GitHub Actions runners are *not* covered, which is why
   migrations run in the container rather than in CI.
+- **Request bodies are capped at 512 KB by adapter-node** unless
+  `BODY_SIZE_LIMIT` is set. Receipt photos are bigger, so `deploy.yml`
+  sets `BODY_SIZE_LIMIT=15M` on the Container App (the form itself refuses
+  files over 10 MB, and photos are downscaled to ~300 KB before storage).
 - **Identical image tag = no new revision.** Re-running a workflow used to be a
   no-op; the `--revision-suffix` fixes that.
 - **Scale-to-zero means no replica to `exec` into or tail** when idle. Load the
@@ -123,12 +159,18 @@ az postgres flexible-server show --resource-group ensacon-ts-rg --name ensacon-t
   one. Break-glass if no admin can log in at all:
   `node db/set-password.js someone@kmlaviation.fi 'NewPassword123'`
   (needs `DATABASE_URL` and firewall access from your machine).
-- **Billing run:** *Flights* → approve what's been logged → *Billing* →
-  *Create all*. Each pilot gets one invoice for everything approved and
+- **Billing run:** *Billing* → check the flights listed under each pilot →
+  *Create all*. Each pilot gets one invoice for everything logged and
   unbilled, at the member rate in force that day; 14-day terms. Mistake?
   *Cancel* puts the flights back, fix the flight, create again — the number
   advances, never reused.
 - **Rate change:** *Fleet*. Affects invoices created from then on only.
+- **Expenses:** a pilot posts a receipt under *Expenses* (photo, total,
+  lines by category). Under *Admin → Expenses* look at the photo, pay by
+  bank transfer, then *Mark paid* with the reference — or *Reject* with a
+  reason the pilot sees. Paid receipts are frozen; anything else the pilot
+  can still edit. Categories (Öljy, Tarvikkeet, Muut) and their bookkeeping
+  accounts live under *Expense categories*.
 
 ## Repo layout
 

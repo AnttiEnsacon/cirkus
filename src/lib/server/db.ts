@@ -50,7 +50,8 @@ export interface ReservationsTable {
 	updated_at: ColumnType<Date, string | undefined, string>;
 }
 
-export type FlightLogStatus = 'draft' | 'submitted' | 'approved' | 'billed';
+/** submitted = logged, editable, not yet invoiced; billed = on an invoice, frozen. */
+export type FlightLogStatus = 'submitted' | 'billed';
 export type SecondPilotRole = 'instructor' | 'backup_pilot';
 
 export interface AirportsTable {
@@ -92,8 +93,6 @@ export interface FlightLogEntriesTable {
 	flight_type_id: string;
 	remarks: string | null;
 	status: Generated<FlightLogStatus>;
-	approved_by: string | null;
-	approved_at: ColumnType<Date | null, string | null, string | null>;
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, string>;
 }
@@ -133,6 +132,52 @@ export interface InvoiceLineItemsTable {
 	description: string | null;
 }
 
+export type ExpenseStatus = 'submitted' | 'paid' | 'rejected';
+
+export interface ExpenseCategoriesTable {
+	id: Generated<string>;
+	code: string;
+	label: string;
+	account: string | null;
+	is_active: Generated<boolean>;
+	sort_order: Generated<number>;
+}
+
+export interface ExpensesTable {
+	id: Generated<string>;
+	user_id: string;
+	receipt_date: ColumnType<Date, string, string>;
+	vendor: string;
+	total_amount: ColumnType<string, number | string, number | string>;
+	notes: string | null;
+	status: Generated<ExpenseStatus>;
+	paid_at: ColumnType<Date | null, string | null | undefined, string | null>;
+	paid_by: string | null;
+	paid_reference: string | null;
+	rejected_reason: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface ExpenseLinesTable {
+	id: Generated<string>;
+	expense_id: string;
+	category_id: string;
+	amount: ColumnType<string, number | string, number | string>;
+	description: string | null;
+	position: Generated<number>;
+}
+
+export interface ReceiptImagesTable {
+	id: Generated<string>;
+	expense_id: string;
+	content_type: string;
+	bytes: Buffer;
+	width: number;
+	height: number;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
 // Table interfaces are added here as migrations introduce them.
 export interface Database {
 	schema_info: {
@@ -149,6 +194,10 @@ export interface Database {
 	flight_log_entries: FlightLogEntriesTable;
 	invoices: InvoicesTable;
 	invoice_line_items: InvoiceLineItemsTable;
+	expense_categories: ExpenseCategoriesTable;
+	expenses: ExpensesTable;
+	expense_lines: ExpenseLinesTable;
+	receipt_images: ReceiptImagesTable;
 }
 
 const pool = new Pool({

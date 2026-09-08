@@ -9,14 +9,17 @@
 		{ href: '/book', label: 'Book', icon: 'calendar' },
 		{ href: '/log', label: 'Log', icon: 'pencil' },
 		{ href: '/logbook', label: 'Logbook', icon: 'list' },
-		{ href: '/invoices', label: 'Invoices', icon: 'receipt' }
+		{ href: '/invoices', label: 'Invoices', icon: 'receipt' },
+		{ href: '/expenses', label: 'Expenses', icon: 'wallet' }
 	];
 	const adminNav = [
 		{ href: '/manage/approvals', label: 'Approvals', icon: 'shield' },
 		{ href: '/manage/flights', label: 'Flights', icon: 'check' },
 		{ href: '/manage/invoices', label: 'Billing', icon: 'euro' },
+		{ href: '/manage/expenses', label: 'Expenses', icon: 'wallet' },
 		{ href: '/manage/fleet', label: 'Fleet', icon: 'plane' },
 		{ href: '/manage/flight-types', label: 'Flight types', icon: 'list' },
+		{ href: '/manage/expense-categories', label: 'Expense categories', icon: 'list' },
 		{ href: '/manage/accounts', label: 'Accounts', icon: 'users' }
 	];
 	const tabs = [...pilotNav.slice(0, 4), { href: '/more', label: 'More', icon: 'more' }];
@@ -24,7 +27,7 @@
 	const path = $derived(page.url.pathname);
 	const isActive = (href: string) => path === href || path.startsWith(href + '/');
 	const onAdminPage = $derived(path.startsWith('/manage'));
-	const moreActive = $derived(onAdminPage || path.startsWith('/invoices') || path === '/more');
+	const moreActive = $derived(onAdminPage || path.startsWith('/invoices') || path.startsWith('/expenses') || path === '/more');
 	const initials = $derived(
 		data.user.name
 			.split(' ')

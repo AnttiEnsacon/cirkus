@@ -32,6 +32,11 @@
 			<span class="list-main"><span class="list-title">Invoices</span></span>
 			<Icon name="chevron" />
 		</a>
+		<a href="/expenses" class="list-item link">
+			<span class="list-icon teal"><Icon name="wallet" /></span>
+			<span class="list-main"><span class="list-title">Expenses</span></span>
+			<Icon name="chevron" />
+		</a>
 	</div>
 
 	{#if data.user.role === 'admin'}
@@ -52,6 +57,11 @@
 				<span class="list-main"><span class="list-title">Billing</span></span>
 				<Icon name="chevron" />
 			</a>
+			<a href="/manage/expenses" class="list-item link">
+				<span class="list-icon"><Icon name="wallet" /></span>
+				<span class="list-main"><span class="list-title">Expenses</span></span>
+				<Icon name="chevron" />
+			</a>
 			<a href="/manage/fleet" class="list-item link">
 				<span class="list-icon"><Icon name="plane" /></span>
 				<span class="list-main"><span class="list-title">Fleet</span></span>
@@ -60,6 +70,11 @@
 			<a href="/manage/flight-types" class="list-item link">
 				<span class="list-icon"><Icon name="list" /></span>
 				<span class="list-main"><span class="list-title">Flight types</span></span>
+				<Icon name="chevron" />
+			</a>
+			<a href="/manage/expense-categories" class="list-item link">
+				<span class="list-icon"><Icon name="list" /></span>
+				<span class="list-main"><span class="list-title">Expense categories</span></span>
 				<Icon name="chevron" />
 			</a>
 			<a href="/manage/accounts" class="list-item link">

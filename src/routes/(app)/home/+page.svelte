@@ -3,7 +3,7 @@
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 	const needsAttention = $derived(
-		!!data.admin && (data.admin.pendingAccounts > 0 || data.admin.pendingFlights > 0 || Number(data.admin.unbilled) > 0)
+		!!data.admin && (data.admin.pendingAccounts > 0 || Number(data.admin.unbilled) > 0 || Number(data.admin.expenses) > 0)
 	);
 </script>
 
@@ -22,11 +22,11 @@
 			{#if data.admin.pendingAccounts > 0}
 				<a href="/manage/approvals" class="row attn"><Icon name="shield" /><span>{data.admin.pendingAccounts} account{data.admin.pendingAccounts === 1 ? '' : 's'} waiting for approval</span><Icon name="chevron" /></a>
 			{/if}
-			{#if data.admin.pendingFlights > 0}
-				<a href="/manage/flights" class="row attn"><Icon name="check" /><span>{data.admin.pendingFlights} flight{data.admin.pendingFlights === 1 ? '' : 's'} to approve</span><Icon name="chevron" /></a>
-			{/if}
 			{#if Number(data.admin.unbilled) > 0}
-				<a href="/manage/invoices" class="row attn"><Icon name="euro" /><span>€{data.admin.unbilled} of approved flying not yet invoiced</span><Icon name="chevron" /></a>
+				<a href="/manage/invoices" class="row attn"><Icon name="euro" /><span>€{data.admin.unbilled} of flying not yet invoiced</span><Icon name="chevron" /></a>
+			{/if}
+			{#if Number(data.admin.expenses) > 0}
+				<a href="/manage/expenses" class="row attn"><Icon name="wallet" /><span>€{data.admin.expenses} of expenses to pay back</span><Icon name="chevron" /></a>
 			{/if}
 		</div>
 	{/if}
