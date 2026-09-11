@@ -20,8 +20,8 @@ Reservation, logbook and billing system for **KML Aviation Oy** — one aircraft
 | Book the aircraft (Helsinki local time, no double-booking) | pilots | `/book` |
 | Log a flight (UTC; Tacho or take-off/landing, per aircraft), personal logbook in block hours | pilots | `/log`, `/logbook` |
 | See, correct or delete any unbilled flight | admins | `/manage/flights` |
-| Create invoices on demand, mark paid, cancel | admins | `/manage/invoices` |
-| See own invoices, print one | pilots | `/invoices` |
+| Create invoices; Cirkus sends them to Procountor, which numbers, emails and collects them | admins | `/manage/invoices` |
+| See own invoices (Procountor number, reference number to pay with), print one | pilots | `/invoices` |
 | Post a receipt (photo, total split by category) to be paid back | pilots | `/expenses` |
 | Pay back receipts by bank transfer, mark paid or reject | admins | `/manage/expenses`, `/manage/expense-categories` |
 | Activity log: every sign-in, sign-out and write, with IP | admins | `/manage/activity` |
@@ -30,10 +30,14 @@ The process is reservation → flight log entry → invoice. There is no
 approval step (it existed in the MVP and was dropped in Phase 07 after trial
 use): a flight is *submitted* when the pilot saves it and *billed* once it is
 on an invoice. Until billed, the pilot who logged it or an admin can edit or
-delete it; cancelling the invoice unfreezes its flights.
+delete it; cancelling a draft invoice unfreezes its flights.
+
+Invoices live in Procountor (Phase 11): Cirkus decides what to bill, pushes
+each invoice to Procountor, and Procountor sends it and keeps the receivable.
+Cirkus polls for *paid*. See *Procountor* below.
 
 Out of scope for this MVP, on purpose: third-party customers and the guest
-rate, scheduled/automatic invoicing, VAT lines, fuel credits, email (password
+rate, scheduled/automatic invoicing, fuel credits, email (password
 resets are done by an admin by hand), owner-tier permissions.
 
 ## Time zones
@@ -55,10 +59,13 @@ npm run check                    # type-check (CI runs this too)
 
 ### End-to-end tests
 
-Four Playwright flows (book → edit → cancel; log → correct; invoice
-lifecycle; expense → pay back / reject) in `tests/e2e/`, run against the **built** app on a throwaway
-database. They wipe reservations, flights and invoices, and refuse to run
-against anything on `azure.com`.
+Five Playwright flows (book → edit → cancel; log → correct; invoice
+lifecycle through Procountor; expense → pay back / reject; activity log) in
+`tests/e2e/`, run against the **built** app on a throwaway database. They
+wipe reservations, flights and invoices, and refuse to run against anything
+on `azure.com`. Procountor is a stand-in (`tests/e2e/fake-procountor.mjs`,
+started by `playwright.config.ts` on port 3199) — the flows never touch the
+real API.
 
 ```powershell
 $env:DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/cirkus_test'
@@ -102,6 +109,16 @@ green in Actions but the app doesn't change.
 
 `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (OIDC login) and
 `DATABASE_URL` (`postgresql://user:pass@ensacon-ts-pg.postgres.database.azure.com:5432/cirkus?sslmode=verify-full`).
+
+For Procountor: secrets `PROCOUNTOR_CLIENT_ID`, `PROCOUNTOR_CLIENT_SECRET`,
+`PROCOUNTOR_API_KEY` (the API user's key, if the client-credentials login
+needs one), `PROCOUNTOR_SYNC_SECRET` (any long random string; shared with
+the hourly sync workflow), `CIRKUS_URL` (the app's public URL, no trailing
+slash, used only by the sync workflow), and the repository *variable*
+`PROCOUNTOR_BASE_URL` (`https://pts-api.procountor.com/api` for the test
+environment, `https://api.procountor.com/api` for production). Each is
+wired into the Container App only when set, so the deploy works before the
+credentials exist — the integration is simply off until then.
 
 ## Azure gotchas (each of these cost us an afternoon)
 
@@ -162,9 +179,17 @@ az postgres flexible-server show --resource-group ensacon-ts-rg --name ensacon-t
   (needs `DATABASE_URL` and firewall access from your machine).
 - **Billing run:** *Billing* → check the flights listed under each pilot →
   *Create all*. Each pilot gets one invoice for everything logged and
-  unbilled, at the member rate in force that day; 14-day terms. Mistake?
-  *Cancel* puts the flights back, fix the flight, create again — the number
-  advances, never reused.
+  unbilled, at the member rate in force that day; 14-day terms. Cirkus
+  sends each new invoice to Procountor straight away (status *sent*);
+  Procountor numbers it, emails it to the pilot and collects the payment.
+  Mistake? Only a *draft* or *error* invoice (one that never reached
+  Procountor) can be *Cancel*led here, which puts the flights back; an
+  invoice already in the books is reversed with a credit note in
+  Procountor by the bookkeeper. Cirkus's own number advances, never reused.
+- **New pilot's first invoice:** the pilot must exist as a customer in
+  Procountor and be linked under *Accounts → Procountor customer* (type
+  the email, *Find*, *Link*). Until then their invoices stay *draft* with
+  the reason on the row; link them and press *Send*.
 - **Rate change:** *Fleet*. Affects invoices created from then on only.
 - **New aircraft:** *Fleet → Add an aircraft*, choosing how it is billed:
   *Tacho time* (tacho end − start) or *Airborne time* (take-off to landing,
@@ -186,13 +211,72 @@ az postgres flexible-server show --resource-group ensacon-ts-rg --name ensacon-t
   can still edit. Categories (Öljy, Tarvikkeet, Muut) and their bookkeeping
   accounts live under *Expense categories*.
 
+## Procountor
+
+Procountor is the system of record for invoices and receivables. Cirkus
+keeps a local row per invoice (its flights, the pilot's view, the printable
+page) whose status mirrors Procountor: `draft` (created in Cirkus, not in
+Procountor yet — pilot not linked, or Procountor not configured) →
+`sent` (created and sent by Procountor; number and bank reference stored)
+→ `paid` (Procountor says so). `error` means the push failed; the message
+is on the Billing row, the flights stay billed, *Send* retries.
+`cancelled` only ever happens to drafts and errors.
+
+- **Client:** `src/lib/server/procountor.ts` — OAuth2 client credentials
+  (`POST /oauth/token`, token cached for its hour), `GET /businesspartners`
+  (customer search for the Accounts page), `POST /invoices` (type
+  `SALES_INVOICE`, status `UNFINISHED`, channel `EMAIL`, one row per flight),
+  `POST /invoices/{id}/send`, `GET /invoices/{id}`. Off entirely when
+  `PROCOUNTOR_BASE_URL`, `_CLIENT_ID` or `_CLIENT_SECRET` is empty.
+- **Prices and VAT:** the hourly rates on *Fleet* are what the pilot pays,
+  VAT included. Each row goes to Procountor as the net unit price
+  (rate ÷ 1.255, four decimals so the total comes back to the cent) with
+  `vatPercent` 25.5 and the flight type's bookkeeping account. `VAT_PERCENT`
+  lives in `src/lib/server/invoicing.ts`. Procountor must know the
+  accounts (3210, 3220, …) — a row with an unknown account is rejected and
+  shows as *error*.
+- **Polling:** `syncInvoiceStatuses()` fetches every `sent` invoice and
+  marks the paid ones (`PAID`, `PAYMENT_TRANSFERRED`, `MARKED_PAID`). It
+  runs when an admin opens *Billing* or a pilot opens *Invoices* (at most
+  every 15 minutes), on the *Sync with Procountor* button, and hourly from
+  `.github/workflows/sync.yml`, which POSTs `/internal/sync` with
+  `Authorization: Bearer $PROCOUNTOR_SYNC_SECRET`. The call wakes the app
+  even when it has scaled to zero.
+- **Every call is in the activity log** (`invoice.create`, `.retry`,
+  `.sync`, `user.find_partner`, `user.link_partner`), with the outcome.
+
+### Procountor gotchas
+
+- **Confirm the shapes against the test environment first.** The client was
+  written from dev.procountor.com without live credentials. Before pointing
+  production at it: create one invoice for a test customer with
+  `PROCOUNTOR_BASE_URL=https://pts-api.procountor.com/api`, check it in
+  Procountor's UI (customer, rows, VAT, channel), watch what
+  `POST /invoices/{id}/send` and the status values really are. The things
+  most likely to need a tweak are in `procountor.ts`: the token request
+  body (some API users need `api_key`), the partner search parameter, the
+  send endpoint, and which statuses count as paid.
+- **Rate limits:** 90 requests/minute on the test server, less generous
+  bursts in production. A billing run makes three calls per invoice; the
+  hourly sync one per open invoice. Fine for a club, but don't put the sync
+  on a one-minute cron.
+- **Validation errors come back as 4xx with an `errors` array**; the client
+  joins the messages into `last_error`, which is what the Billing row
+  shows. Typical: unknown accounting account, customer without an email
+  for the EMAIL channel, due date before the invoice date.
+- **Token expiry:** a 401 clears the cached token and the next call logs in
+  again; a persistent 401 means the credentials are wrong or the API user
+  was disabled.
+- **Not configured is not an error.** With the env vars empty the app runs
+  exactly as before, invoices stay `draft`, and the Billing page says so.
+
 ## Repo layout
 
 ```
 db/migrations/         numbered SQL, applied in order by db/migrate.js
 db/set-password.js     break-glass password set
-src/lib/server/        db.ts (Kysely types), auth.ts, time.ts, invoicing.ts
-src/routes/            login, register, logout, healthz
+src/lib/server/        db.ts (Kysely types), auth.ts, time.ts, invoicing.ts, procountor.ts
+src/routes/            login, register, logout, healthz, internal/sync (hourly Procountor poll)
 src/routes/(app)/      everything behind login: home, book, log, logbook, invoices
 src/routes/(app)/(admin)/manage/   approvals, accounts, fleet, flights, invoices
 ```

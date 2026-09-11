@@ -16,6 +16,7 @@
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
 	{#if form?.passwordSetFor}<p class="alert notice">Password updated.</p>{/if}
 	{#if form?.added}<p class="alert notice">{form.added} added — they can log in with the temporary password now.</p>{/if}
+	{#if form?.linked}<p class="alert notice">Procountor customer saved.</p>{/if}
 
 	<form method="POST" action="?/add" class="card stack">
 		<p class="section-label">Add a member</p>
@@ -71,6 +72,46 @@
 
 				<hr class="hr" />
 
+				<form method="POST" action="?/linkPartner" class="fields pw">
+					<input type="hidden" name="id" value={person.id} />
+					<label class="field">
+						<span>Procountor customer</span>
+						<input name="partner_id" inputmode="numeric" placeholder="not linked — invoices stay drafts" value={person.procountor_partner_id ?? ''} />
+					</label>
+					<div class="field"><span>&nbsp;</span><button type="submit" class="btn btn-secondary sm">Save</button></div>
+				</form>
+				{#if data.procountor}
+					<form method="POST" action="?/findPartner" class="fields pw">
+						<input type="hidden" name="id" value={person.id} />
+						<label class="field">
+							<span>Find in Procountor</span>
+							<input name="query" value={form?.partnerSearch?.userId === person.id ? form.partnerSearch.query : person.email} />
+						</label>
+						<div class="field"><span>&nbsp;</span><button type="submit" class="btn btn-secondary sm"><Icon name="users" size={16} /> Find</button></div>
+					</form>
+					{#if form?.partnerSearch?.userId === person.id}
+						{#if form.partnerSearch.matches.length === 0}
+							<p class="hint">No Procountor customer matches “{form.partnerSearch.query}”. Create the customer in Procountor first, then search again.</p>
+						{:else}
+							<div class="tight-list matches">
+								{#each form.partnerSearch.matches as m (m.id)}
+									<form method="POST" action="?/linkPartner" class="list-item">
+										<input type="hidden" name="id" value={person.id} />
+										<input type="hidden" name="partner_id" value={m.id} />
+										<span class="list-main">
+											<span class="list-title">{m.name}</span>
+											<span class="list-sub">{m.email ?? 'no email'}{m.customerNumber ? ` · customer ${m.customerNumber}` : ''} · id {m.id}</span>
+										</span>
+										<span class="list-end"><button type="submit" class="btn btn-teal xs">Link</button></span>
+									</form>
+								{/each}
+							</div>
+						{/if}
+					{/if}
+				{/if}
+
+				<hr class="hr" />
+
 				<form method="POST" action="?/setPassword" class="fields pw">
 					<input type="hidden" name="id" value={person.id} />
 					<label class="field">
@@ -93,5 +134,8 @@
 	}
 	.btn {
 		align-self: flex-start;
+	}
+	.matches .list-item {
+		margin: 0;
 	}
 </style>

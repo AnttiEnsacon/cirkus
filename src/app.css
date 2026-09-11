@@ -287,12 +287,14 @@ a.card:hover {
 	color: #fff;
 }
 .status.issued,
+.status.sent,
 .status.pending,
 .status.submitted {
 	background: var(--accent-soft);
 	color: var(--accent);
 }
 .status.rejected,
+.status.error,
 .status.overdue {
 	background: var(--danger-soft);
 	color: var(--danger);

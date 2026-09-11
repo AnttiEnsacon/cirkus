@@ -22,12 +22,31 @@ export default defineConfig({
 		timezoneId: 'Europe/Helsinki'
 	},
 	globalSetup: './tests/e2e/global-setup.ts',
-	webServer: {
-		command: 'node build',
-		port: 3100,
-		reuseExistingServer: false,
-		env: { PORT: '3100', ORIGIN: 'http://localhost:3100', BODY_SIZE_LIMIT: '15M', DATABASE_URL: dbUrl, NODE_ENV: 'production' }
-	},
+	webServer: [
+		// A stand-in Procountor (tests/e2e/fake-procountor.mjs) so flow 03 can
+		// send invoices, mark them paid and sync without the real API.
+		{
+			command: 'node tests/e2e/fake-procountor.mjs',
+			port: 3199,
+			reuseExistingServer: false
+		},
+		{
+			command: 'node build',
+			port: 3100,
+			reuseExistingServer: false,
+			env: {
+				PORT: '3100',
+				ORIGIN: 'http://localhost:3100',
+				BODY_SIZE_LIMIT: '15M',
+				DATABASE_URL: dbUrl,
+				NODE_ENV: 'production',
+				PROCOUNTOR_BASE_URL: 'http://localhost:3199/api',
+				PROCOUNTOR_CLIENT_ID: 'test-client',
+				PROCOUNTOR_CLIENT_SECRET: 'test-secret',
+				PROCOUNTOR_SYNC_SECRET: 'test-sync-secret'
+			}
+		}
+	],
 	projects: [
 		{
 			name: 'chromium',

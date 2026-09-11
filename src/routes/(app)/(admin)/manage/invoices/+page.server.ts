@@ -1,11 +1,13 @@
 import { fail } from '@sveltejs/kit';
 import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
-import { cancelInvoice, createInvoiceForPilot, markInvoicePaid, unbilledByPilot, unbilledFlights } from '$lib/server/invoicing';
+import { cancelInvoice, createInvoiceForPilot, pushInvoice, syncIfStale, syncInvoiceStatuses, unbilledByPilot, unbilledFlights } from '$lib/server/invoicing';
+import { isConfigured } from '$lib/server/procountor';
 import { formatUtcDate } from '$lib/server/time';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
+	await syncIfStale();
 	const [unbilled, flights] = await Promise.all([unbilledByPilot(), unbilledFlights()]);
 
 	const rows = await db
@@ -22,6 +24,9 @@ export const load: PageServerLoad = async () => {
 			'invoices.paid_at',
 			'invoices.paid_reference',
 			'invoices.total_amount',
+			'invoices.procountor_number',
+			'invoices.procountor_reference',
+			'invoices.last_error',
 			'users.name as pilot_name'
 		])
 		.orderBy('invoices.invoice_year', 'desc')
@@ -38,12 +43,15 @@ export const load: PageServerLoad = async () => {
 		period: `${formatUtcDate(new Date(r.period_start))} – ${formatUtcDate(new Date(r.period_end))}`,
 		issued: formatUtcDate(new Date(r.issued_at)),
 		due: formatUtcDate(new Date(r.due_date)),
-		overdue: r.status === 'issued' && formatUtcDate(new Date(r.due_date)) < today,
+		overdue: r.status === 'sent' && formatUtcDate(new Date(r.due_date)) < today,
+		procountor_number: r.procountor_number,
+		reference: r.procountor_reference,
+		error: r.last_error,
 		paid: r.paid_at ? formatUtcDate(new Date(r.paid_at)) + (r.paid_reference ? ` (${r.paid_reference})` : '') : '',
 		total: Number(r.total_amount).toFixed(2)
 	}));
 
-	return { unbilled, flights, invoices };
+	return { unbilled, flights, invoices, procountor: isConfigured() };
 };
 
 /** Number, pilot and total, for the log. */
@@ -65,8 +73,9 @@ export const actions: Actions = {
 		if (!pilotId) return fail(400, { error: 'Missing pilot.' });
 		try {
 			const id = await createInvoiceForPilot(pilotId, locals.user!.id);
-			audit(event, { action: 'invoice.create', entity: ['invoice', id], details: await invoiceSummary(id) });
-			return id ? { created: 1 } : { created: 0 };
+			const pushed = id ? await pushInvoice(id) : null;
+			audit(event, { action: 'invoice.create', entity: ['invoice', id], details: { ...(await invoiceSummary(id)), procountor: pushed } });
+			return id ? { created: 1, pushed: pushed === 'sent' ? 1 : 0 } : { created: 0 };
 		} catch (err) {
 			return fail(409, { error: err instanceof Error ? err.message : 'Could not create the invoice.' });
 		}
@@ -76,6 +85,7 @@ export const actions: Actions = {
 		const { locals } = event;
 		const pending = await unbilledByPilot();
 		let created = 0;
+		let pushed = 0;
 		const numbers: string[] = [];
 		try {
 			for (const p of pending) {
@@ -83,30 +93,39 @@ export const actions: Actions = {
 				if (id) {
 					created++;
 					numbers.push((await invoiceSummary(id)).number ?? id);
+					if ((await pushInvoice(id)) === 'sent') pushed++;
 				}
 			}
-			audit(event, { action: 'invoice.create_all', details: { created, numbers } });
+			audit(event, { action: 'invoice.create_all', details: { created, pushed, numbers } });
 		} catch (err) {
 			return fail(409, {
 				error: `${err instanceof Error ? err.message : 'Could not create an invoice.'} (${created} created before that.)`
 			});
 		}
-		return { created };
+		return { created, pushed };
 	},
 
-	markPaid: async (event) => {
-		const form = await event.request.formData();
-		const id = String(form.get('id') ?? '');
-		const reference = String(form.get('reference') ?? '').trim() || null;
+	retry: async (event) => {
+		const id = String((await event.request.formData()).get('id') ?? '');
 		if (!id) return fail(400, { error: 'Missing invoice.' });
-		audit(event, { action: 'invoice.mark_paid', entity: ['invoice', id], details: { ...(await invoiceSummary(id)), reference } });
-		if (!(await markInvoicePaid(id, reference))) return fail(400, { error: 'Only an issued invoice can be marked paid.' });
+		const result = await pushInvoice(id);
+		audit(event, { action: 'invoice.retry', entity: ['invoice', id], details: { ...(await invoiceSummary(id)), procountor: result } });
+		if (result !== 'sent') {
+			const inv = await db.selectFrom('invoices').select('last_error').where('id', '=', id).executeTakeFirst();
+			return fail(400, { error: inv?.last_error ?? 'Could not send the invoice to Procountor.' });
+		}
+	},
+
+	sync: async (event) => {
+		const r = await syncInvoiceStatuses();
+		audit(event, { action: 'invoice.sync', details: r });
+		return { synced: r };
 	},
 
 	cancel: async (event) => {
 		const id = String((await event.request.formData()).get('id') ?? '');
 		if (!id) return fail(400, { error: 'Missing invoice.' });
 		audit(event, { action: 'invoice.cancel', entity: ['invoice', id], details: await invoiceSummary(id) });
-		if (!(await cancelInvoice(id))) return fail(400, { error: 'Only an issued invoice can be cancelled.' });
+		if (!(await cancelInvoice(id))) return fail(400, { error: 'Only an invoice that never reached Procountor can be cancelled here; one in the books is reversed in Procountor.' });
 	}
 };

@@ -2,18 +2,20 @@ import { fail } from '@sveltejs/kit';
 import { audit } from '$lib/server/audit';
 import { db } from '$lib/server/db';
 import { hashPassword } from '$lib/server/auth';
+import { findPartners, isConfigured, ProcountorError } from '$lib/server/procountor';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const users = await db
 		.selectFrom('users')
-		.select(['id', 'name', 'email', 'role', 'status', 'password_hash'])
+		.select(['id', 'name', 'email', 'role', 'status', 'password_hash', 'procountor_partner_id'])
 		.orderBy('name', 'asc')
 		.execute();
 
 	// Never send password hashes to the client — just whether one is set.
 	return {
-		users: users.map(({ password_hash, ...u }) => ({ ...u, hasPassword: password_hash !== null }))
+		users: users.map(({ password_hash, ...u }) => ({ ...u, hasPassword: password_hash !== null })),
+		procountor: isConfigured()
 	};
 };
 
@@ -100,5 +102,45 @@ export const actions: Actions = {
 			.execute();
 
 		return { passwordSetFor: id };
+	},
+
+	/** Search Procountor's customers by the person's email and name; the matches are offered to link. */
+	findPartner: async (event) => {
+		const form = await event.request.formData();
+		const id = String(form.get('id') ?? '');
+		const query = String(form.get('query') ?? '').trim();
+		if (!id || !query) return fail(400, { error: 'Type a name or email to search for.' });
+		if (!isConfigured()) return fail(400, { error: 'Procountor is not configured.' });
+		try {
+			const matches = await findPartners(query);
+			audit(event, { action: 'user.find_partner', entity: ['user', id], details: { query, matches: matches.length } });
+			return { partnerSearch: { userId: id, query, matches } };
+		} catch (err) {
+			audit(event, { action: 'user.find_partner', entity: ['user', id], details: { query }, ok: false });
+			return fail(502, { error: err instanceof ProcountorError ? err.message : 'Procountor did not answer.' });
+		}
+	},
+
+	/** Link (or, with an empty id, unlink) the person to a Procountor customer. */
+	linkPartner: async (event) => {
+		const form = await event.request.formData();
+		const id = String(form.get('id') ?? '');
+		const raw = String(form.get('partner_id') ?? '').trim();
+		const partnerId = raw === '' ? null : Number(raw);
+		if (!id) return fail(400, { error: 'Missing account.' });
+		if (partnerId !== null && (!Number.isInteger(partnerId) || partnerId <= 0)) {
+			return fail(400, { error: 'The Procountor customer id must be a whole number.' });
+		}
+		if (partnerId !== null) {
+			const taken = await db.selectFrom('users').select('name').where('procountor_partner_id', '=', partnerId).where('id', '<>', id).executeTakeFirst();
+			if (taken) return fail(400, { error: `Procountor customer ${partnerId} is already linked to ${taken.name}.` });
+		}
+		await db
+			.updateTable('users')
+			.set({ procountor_partner_id: partnerId, updated_at: new Date().toISOString() })
+			.where('id', '=', id)
+			.execute();
+		audit(event, { action: 'user.link_partner', entity: ['user', id], details: { partnerId } });
+		return { linked: id };
 	}
 };

@@ -40,7 +40,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.selectFrom('invoices')
 			.select([sql<string>`coalesce(sum(total_amount), 0)`.as('open'), sql<number>`count(*)::int`.as('count')])
 			.where('pilot_id', '=', me.id)
-			.where('status', '=', 'issued')
+			.where('status', '=', 'sent')
 			.executeTakeFirstOrThrow(),
 		db
 			.selectFrom('flight_log_entries')

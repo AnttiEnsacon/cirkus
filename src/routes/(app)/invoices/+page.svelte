@@ -24,10 +24,10 @@
 		<div class="card tight">
 			{#each data.invoices as inv (inv.id)}
 				<a href="/invoices/{inv.id}" class="list-item link">
-					<span class="list-icon" class:teal={inv.status === 'issued'}><Icon name="receipt" size={17} /></span>
+					<span class="list-icon" class:teal={inv.status === 'sent'}><Icon name="receipt" size={17} /></span>
 					<span class="list-main">
 						<span class="list-title"><span class="mono">{inv.number}</span> · €{inv.total}</span>
-						<span class="list-sub">{inv.period} · due {inv.due}{inv.overdue ? ' · overdue' : ''}</span>
+						<span class="list-sub">{inv.period} · due {inv.due}{inv.overdue ? ' · overdue' : ''}{inv.reference ? ` · ref ${inv.reference}` : ''}</span>
 					</span>
 					<span class="list-end">
 						<span class="status {inv.overdue ? 'overdue' : inv.status}">{inv.overdue ? 'overdue' : inv.status}</span>

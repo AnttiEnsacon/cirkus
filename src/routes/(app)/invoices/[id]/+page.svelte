@@ -16,7 +16,8 @@
 		<header class="head">
 			<div>
 				<p class="eyebrow">KML Aviation Oy</p>
-				<h1>Invoice <span class="mono">{inv.number}</span></h1>
+				<h1>Invoice <span class="mono">{inv.procountor_number ?? inv.number}</span></h1>
+				{#if inv.procountor_number}<p class="faint">Cirkus {inv.number}</p>{/if}
 				<span class="status {inv.status}">{inv.status}</span>
 			</div>
 			<dl class="meta">
@@ -24,6 +25,7 @@
 				<dt>Period</dt><dd class="mono">{inv.period}</dd>
 				<dt>Issued</dt><dd class="mono">{inv.issued}</dd>
 				<dt>Due</dt><dd class="mono">{inv.due}</dd>
+				{#if inv.reference}<dt>Reference</dt><dd class="mono">{inv.reference}</dd>{/if}
 				{#if inv.paid}<dt>Paid</dt><dd class="mono">{inv.paid}{inv.paid_reference ? ` · ${inv.paid_reference}` : ''}</dd>{/if}
 				{#if inv.cancelled}<dt>Cancelled</dt><dd class="mono">{inv.cancelled}</dd>{/if}
 			</dl>

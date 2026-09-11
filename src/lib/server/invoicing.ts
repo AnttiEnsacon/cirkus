@@ -1,7 +1,12 @@
 import { sql } from 'kysely';
-import { db } from './db';
+import { db, type InvoiceStatus } from './db';
 import { formatUtcDate } from './time';
 import { billingDetail, billingLabel } from './flightLog';
+import * as procountor from './procountor';
+
+/** Normal Finnish VAT. Member rates include it; Procountor rows are sent net. */
+export const VAT_PERCENT = 25.5;
+const net = (gross: number) => Math.round((gross / (1 + VAT_PERCENT / 100)) * 10000) / 10000;
 
 const DUE_DAYS = 14;
 
@@ -190,25 +195,18 @@ export async function createInvoiceForPilot(pilotId: string, createdBy: string):
 	});
 }
 
-/** Marks an issued invoice paid. */
-export async function markInvoicePaid(invoiceId: string, reference: string | null): Promise<boolean> {
-	const r = await db
-		.updateTable('invoices')
-		.set({ status: 'paid', paid_at: new Date().toISOString(), paid_reference: reference })
-		.where('id', '=', invoiceId)
-		.where('status', '=', 'issued')
-		.executeTakeFirst();
-	return Number(r.numUpdatedRows) === 1;
-}
-
-/** Cancels an issued invoice and releases its flights to be billed again. Lines are kept for the record. */
+/**
+ * Cancels an invoice that never reached Procountor (draft or error) and
+ * releases its flights to be billed again. Lines are kept for the record.
+ * Anything already in Procountor is reversed there, by the bookkeeper.
+ */
 export async function cancelInvoice(invoiceId: string): Promise<boolean> {
 	return db.transaction().execute(async (trx) => {
 		const r = await trx
 			.updateTable('invoices')
 			.set({ status: 'cancelled', cancelled_at: new Date().toISOString() })
 			.where('id', '=', invoiceId)
-			.where('status', '=', 'issued')
+			.where('status', 'in', ['draft', 'error'])
 			.executeTakeFirst();
 		if (Number(r.numUpdatedRows) !== 1) return false;
 
@@ -222,4 +220,120 @@ export async function cancelInvoice(invoiceId: string): Promise<boolean> {
 			.execute();
 		return true;
 	});
+}
+
+/**
+ * Pushes a draft/error invoice into Procountor: create, then send. On
+ * success the invoice is 'sent' with Procountor's id, number and bank
+ * reference; on failure it is 'error' with the message, flights untouched.
+ * Returns the resulting status. A pilot without a Procountor customer
+ * link leaves the invoice a draft with an explanatory last_error.
+ */
+export async function pushInvoice(invoiceId: string): Promise<InvoiceStatus> {
+	const inv = await db
+		.selectFrom('invoices')
+		.innerJoin('users', 'users.id', 'invoices.pilot_id')
+		.select(['invoices.id', 'invoices.status', 'invoices.invoice_number', 'invoices.issued_at', 'invoices.due_date', 'users.procountor_partner_id', 'users.name'])
+		.where('invoices.id', '=', invoiceId)
+		.executeTakeFirst();
+	if (!inv || (inv.status !== 'draft' && inv.status !== 'error')) return inv?.status ?? 'error';
+
+	const stamp = (patch: Record<string, unknown>) =>
+		db.updateTable('invoices').set(patch).where('id', '=', invoiceId).execute();
+
+	if (!procountor.isConfigured()) {
+		await stamp({ last_error: 'Procountor is not configured on this server.' });
+		return 'draft';
+	}
+	if (!inv.procountor_partner_id) {
+		await stamp({ status: 'draft', last_error: `${inv.name} is not linked to a Procountor customer — link them under Accounts, then retry.` });
+		return 'draft';
+	}
+
+	const lines = await db
+		.selectFrom('invoice_line_items as l')
+		.innerJoin('flight_log_entries as f', 'f.id', 'l.flight_log_id')
+		.innerJoin('flight_types as t', 't.id', 'f.flight_type_id')
+		.select(['l.description', 'l.hours_billed', 'l.rate_applied', 't.account'])
+		.where('l.invoice_id', '=', invoiceId)
+		.orderBy('f.block_off_at', 'asc')
+		.execute();
+
+	try {
+		const created = await procountor.createInvoice({
+			partnerId: inv.procountor_partner_id,
+			date: formatUtcDate(new Date(inv.issued_at)),
+			dueDate: formatUtcDate(new Date(inv.due_date)),
+			referenceText: `Cirkus ${inv.invoice_number}`,
+			rows: lines.map((l) => ({
+				product: l.description ?? 'Flight',
+				quantity: Number(l.hours_billed),
+				unit: 'h',
+				unitPrice: net(Number(l.rate_applied)),
+				vatPercent: VAT_PERCENT,
+				account: l.account
+			}))
+		});
+		await stamp({ procountor_id: created.id, procountor_number: created.invoiceNumber, procountor_reference: created.referenceNumber, procountor_status: created.status });
+		await procountor.sendInvoice(created.id);
+		const after = await procountor.getInvoice(created.id);
+		await stamp({
+			status: 'sent',
+			sent_at: new Date().toISOString(),
+			synced_at: new Date().toISOString(),
+			procountor_number: after.invoiceNumber ?? created.invoiceNumber,
+			procountor_reference: after.referenceNumber ?? created.referenceNumber,
+			procountor_status: after.status,
+			last_error: null
+		});
+		return 'sent';
+	} catch (err) {
+		await stamp({ status: 'error', last_error: err instanceof Error ? err.message : String(err) });
+		return 'error';
+	}
+}
+
+/**
+ * Asks Procountor about every 'sent' invoice and marks the paid ones paid.
+ * Returns how many changed. Throttled by the callers (pages: 15 min;
+ * the hourly /internal/sync: always).
+ */
+export async function syncInvoiceStatuses(): Promise<{ checked: number; paid: number; errors: number }> {
+	if (!procountor.isConfigured()) return { checked: 0, paid: 0, errors: 0 };
+	const open = await db
+		.selectFrom('invoices')
+		.select(['id', 'procountor_id'])
+		.where('status', '=', 'sent')
+		.where('procountor_id', 'is not', null)
+		.execute();
+	let paid = 0;
+	let errors = 0;
+	for (const inv of open) {
+		try {
+			const remote = await procountor.getInvoice(inv.procountor_id!);
+			const patch: Record<string, unknown> = {
+				procountor_status: remote.status,
+				procountor_number: remote.invoiceNumber,
+				procountor_reference: remote.referenceNumber,
+				synced_at: new Date().toISOString()
+			};
+			if (procountor.isPaidStatus(remote.status)) {
+				patch.status = 'paid';
+				patch.paid_at = remote.paymentDate ? new Date(remote.paymentDate).toISOString() : new Date().toISOString();
+				paid++;
+			}
+			await db.updateTable('invoices').set(patch).where('id', '=', inv.id).execute();
+		} catch {
+			errors++;
+		}
+	}
+	return { checked: open.length, paid, errors };
+}
+
+let lastSync = 0;
+/** The page-open variant: at most once per 15 minutes. */
+export async function syncIfStale(): Promise<void> {
+	if (Date.now() - lastSync < 15 * 60 * 1000) return;
+	lastSync = Date.now();
+	await syncInvoiceStatuses();
 }

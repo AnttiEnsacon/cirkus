@@ -36,6 +36,8 @@ try {
 	await client.query('delete from reservations');
 	await client.query('delete from sessions');
 	await client.query('delete from user_actions');
+	// Flow 03 links the pilot to a (fake) Procountor customer itself.
+	await client.query('update users set procountor_partner_id = null');
 	// A second aircraft, billed by airborne time, no Tacho recorded — so the
 	// flows cover both bases. (Not in a migration: test data only.)
 	await client.query(

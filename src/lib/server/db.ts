@@ -11,6 +11,8 @@ export interface UsersTable {
 	password_hash: string | null;
 	role: UserRole;
 	status: UserStatus;
+	/** Business-partner id in Procountor; invoices need it. */
+	procountor_partner_id: number | null;
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, string>;
 }
@@ -109,7 +111,8 @@ export interface FlightLogEntriesTable {
 	updated_at: ColumnType<Date, string | undefined, string>;
 }
 
-export type InvoiceStatus = 'issued' | 'paid' | 'cancelled';
+/** Mirrors Procountor: draft = not there yet, sent = there and sent, paid = reported paid, error = push failed. */
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'error' | 'cancelled';
 
 export interface InvoicesTable {
 	id: Generated<string>;
@@ -130,6 +133,13 @@ export interface InvoicesTable {
 	cancelled_at: ColumnType<Date | null, string | null | undefined, string | null>;
 	notes: string | null;
 	created_by: string;
+	procountor_id: number | null;
+	procountor_number: string | null;
+	procountor_reference: string | null;
+	procountor_status: string | null;
+	sent_at: ColumnType<Date | null, string | null | undefined, string | null>;
+	synced_at: ColumnType<Date | null, string | null | undefined, string | null>;
+	last_error: string | null;
 	created_at: ColumnType<Date, string | undefined, never>;
 }
 

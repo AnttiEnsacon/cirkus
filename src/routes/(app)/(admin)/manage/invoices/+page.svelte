@@ -11,11 +11,28 @@
 <div class="page">
 	<div class="page-head">
 		<h1>Billing</h1>
+		{#if data.procountor}
+			<form method="POST" action="?/sync">
+				<button type="submit" class="btn sm"><Icon name="refresh" size={16} /> Sync with Procountor</button>
+			</form>
+		{/if}
 	</div>
 
+	{#if !data.procountor}
+		<p class="alert notice">Procountor is not configured — invoices are created as drafts and are not sent to anyone.</p>
+	{/if}
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
 	{#if form?.created !== undefined}
-		<p class="alert notice">{form.created === 0 ? 'Nothing to bill.' : `${form.created} invoice${form.created === 1 ? '' : 's'} created.`}</p>
+		<p class="alert notice">
+			{form.created === 0 ? 'Nothing to bill.' : `${form.created} invoice${form.created === 1 ? '' : 's'} created`}{#if form.created > 0 && data.procountor}, {form.pushed ?? 0} sent to Procountor.{:else if form.created > 0}.{/if}
+		</p>
+	{/if}
+	{#if form?.synced}
+		<p class="alert notice">
+			{form.synced.checked === 0
+				? 'No open invoices to check.'
+				: `${form.synced.checked} open invoice${form.synced.checked === 1 ? '' : 's'} checked, ${form.synced.paid} paid${form.synced.errors ? `, ${form.synced.errors} could not be read` : ''}.`}
+		</p>
 	{/if}
 
 	<p class="section-label">Ready to invoice</p>
@@ -65,26 +82,29 @@
 			<div class="table-wrap">
 				<table class="table">
 					<thead>
-						<tr><th>Number</th><th>Pilot</th><th>Period</th><th>Issued</th><th>Due</th><th class="num">Total €</th><th>Status</th><th>Paid</th><th></th></tr>
+						<tr><th>Number</th><th>Pilot</th><th>Period</th><th>Due</th><th class="num">Total €</th><th>Status</th><th>Procountor</th><th></th></tr>
 					</thead>
 					<tbody>
 						{#each data.invoices as inv (inv.id)}
 							<tr>
-								<td class="mono"><a href="/invoices/{inv.id}">{inv.number}</a></td>
+								<td class="mono">
+									<a href="/invoices/{inv.id}">{inv.procountor_number ?? inv.number}</a>
+									{#if inv.procountor_number}<span class="sub">Cirkus {inv.number}</span>{/if}
+								</td>
 								<td>{inv.pilot_name}</td>
 								<td class="mono">{inv.period}</td>
-								<td class="mono">{inv.issued}</td>
 								<td class="mono">{inv.due}</td>
 								<td class="num">{inv.total}</td>
 								<td><span class="status {inv.overdue ? 'overdue' : inv.status}">{inv.overdue ? 'overdue' : inv.status}</span></td>
-								<td class="faint">{inv.paid}</td>
+								<td class="faint wrap">
+									{#if inv.reference}<span class="mono">ref {inv.reference}</span>{/if}
+									{#if inv.paid}<span class="sub">paid {inv.paid}</span>{/if}
+									{#if inv.status === 'error' && inv.error}<span class="sub err">{inv.error}</span>{/if}
+									{#if inv.status === 'draft' && inv.error}<span class="sub">{inv.error}</span>{/if}
+								</td>
 								<td class="actions">
-									{#if inv.status === 'issued'}
-										<form method="POST" action="?/markPaid" class="pay">
-											<input type="hidden" name="id" value={inv.id} />
-											<input name="reference" placeholder="reference" class="ref" />
-											<button type="submit" class="btn btn-teal xs">Mark paid</button>
-										</form>
+									{#if inv.status === 'draft' || inv.status === 'error'}
+										<form method="POST" action="?/retry"><input type="hidden" name="id" value={inv.id} /><button type="submit" class="btn btn-teal xs" disabled={!data.procountor}>Send</button></form>
 										<form method="POST" action="?/cancel"><input type="hidden" name="id" value={inv.id} /><button type="submit" class="btn btn-danger xs">Cancel</button></form>
 									{/if}
 								</td>
@@ -115,13 +135,22 @@
 			padding-left: 1.5rem;
 		}
 	}
-	.ref {
-		border: 1px solid var(--line-strong);
-		border-radius: 8px;
-		padding: 5px 8px;
-		width: 9rem;
-		font-size: 12px;
+	.sub {
+		display: block;
+		font-size: 11.5px;
+		color: var(--ink-faint);
 		font-family: var(--sans);
+	}
+	.wrap {
+		max-width: 14rem;
+	}
+	.table td.actions form {
+		display: block;
+		margin: 0 0 4px auto;
+		width: max-content;
+	}
+	.err {
+		color: var(--danger);
 	}
 	.btn {
 		align-self: flex-start;

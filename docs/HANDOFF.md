@@ -115,8 +115,10 @@ Roughly in the order I would do them.
   `flight_hours` are generated columns — never computed in application code.
 - **Status flows.** users: pending → approved/rejected. Flights:
   submitted → billed since Phase 07 (cancelling an invoice returns billed →
-  submitted). Invoices: issued → paid, or issued → cancelled. These are
-  Postgres enums; extend by migration.
+  submitted). Invoices since Phase 11: draft → sent → paid, or error
+  (push to Procountor failed; retry), with draft/error → cancelled; the
+  status mirrors Procountor, see README, Procountor. These are Postgres
+  enums; extend by migration.
 - **Styling.** Tokens and shared components live in `src/app.css` (card,
   chip, status, btn, field, table, list-item, alert). Pages carry only
   layout-specific CSS. Breakpoint 900px: below it the phone shell (top bar,
