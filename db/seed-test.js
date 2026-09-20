@@ -27,6 +27,21 @@ const client = new pg.Client({ connectionString: url });
 await client.connect();
 try {
 	await client.query('begin');
+	// Phase 15: the airworthiness tables (items go with their orders, orders
+	// and tasks with the aircraft — but the aircraft stays, so explicitly).
+	// Released work orders refuse every change (the triggers in 0015). A
+	// throwaway database is the one place that is wrong, so step around them
+	// here — and only here.
+	await client.query('alter table mx_work_order_items disable trigger mx_work_order_items_immutable');
+	await client.query('alter table mx_work_orders disable trigger mx_work_orders_immutable');
+	await client.query('delete from mx_work_order_items');
+	await client.query('delete from mx_work_orders');
+	await client.query('alter table mx_work_order_items enable trigger mx_work_order_items_immutable');
+	await client.query('alter table mx_work_orders enable trigger mx_work_orders_immutable');
+	await client.query('delete from mx_usage_adjustments');
+	await client.query('delete from mx_tasks');
+	await client.query('delete from mx_aircraft');
+	await client.query('update users set technical_manager = false, licence_no = null');
 	await client.query('delete from receipt_images');
 	await client.query('delete from expense_lines');
 	await client.query('delete from expenses');

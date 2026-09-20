@@ -1,0 +1,8 @@
+code,title,source,source_ref,interval_hours,interval_months,interval_landings,one_time,anchor_kind,anchor_date,anchor_hours,anchor_landings,tolerance_hours,tolerance_days,tolerance_landings,reset_rule,pilot_owner_allowed,notes
+INSP-100H,100-hour / annual inspection,ica,AMM 05-20,100,12,,no,last_compliance,,,,10,0,0,from_original,no,
+OIL-50H,Engine oil and filter change,ica,AMM 12-10,50,4,,no,last_compliance,,,,0,0,0,from_actual,yes,Part-ML Appendix II
+ELT-BATT,ELT battery replacement,ica,AMM 25-60,,60,,no,last_compliance,,,,0,0,0,from_original,no,
+CAPS-REPACK,CAPS parachute and rocket replacement,als,AMM 04-00,,120,,no,last_compliance,,,,0,30,0,from_original,no,"Counts from the pack date; the tolerance in this row is refused with a note"
+AD-2022-0187,Fuel line clamp inspection (sample AD),ad,AD 2022-0187,200,,,no,last_compliance,,,,0,0,0,from_original,no,
+MAG-500H,Magneto 500 h inspection,sb,Continental SB,500,,,no,last_compliance,,,,0,0,0,from_original,no,
+FIRE-EXT,Fire extinguisher check,owner,,,12,,no,last_compliance,,,,0,0,0,from_original,no,

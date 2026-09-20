@@ -118,3 +118,13 @@ export function formatUtc(date: Date): string {
 export function formatUtcDate(date: Date): string {
 	return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`;
 }
+
+/**
+ * Today's date in Helsinki, "YYYY-MM-DD". The airworthiness pages count
+ * calendar limits in whole days of the club's own calendar (Phase 15);
+ * maintenance dates are `date` columns with no time of day.
+ */
+export function helsinkiToday(now: Date = new Date()): string {
+	const p = partsOf(now);
+	return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+}

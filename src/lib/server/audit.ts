@@ -41,7 +41,12 @@ const ENTITY_BY_ROUTE: Record<string, string> = {
 	'/(app)/(admin)/manage/flight-types': 'flight_type',
 	'/(app)/(admin)/manage/fleet': 'aircraft',
 	'/(app)/(admin)/manage/accounts': 'user',
-	'/(app)/(admin)/manage/approvals': 'user'
+	'/(app)/(admin)/manage/approvals': 'user',
+	'/(app)/(airworthiness)/airworthiness': 'aircraft',
+	'/(app)/(airworthiness)/airworthiness/[tail]/programme': 'aircraft',
+	'/(app)/(airworthiness)/airworthiness/[tail]/programme/tasks/[id]': 'mx_task',
+	'/(app)/(airworthiness)/airworthiness/[tail]/usage': 'aircraft',
+	'/(app)/(airworthiness)/airworthiness/[tail]/baseline': 'mx_work_order'
 };
 /** Default-action pages: what their one action does. */
 const DEFAULT_VERB: Record<string, string> = {

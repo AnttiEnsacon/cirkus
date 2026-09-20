@@ -11,6 +11,13 @@ export interface SessionUser {
 	email: string;
 	role: UserRole;
 	status: UserStatus;
+	/** Phase 15: may edit the airworthiness programme; admins may too. */
+	technicalManager: boolean;
+}
+
+/** Who may open and edit the airworthiness pages. */
+export function canManageAirworthiness(user: Pick<SessionUser, 'role' | 'technicalManager'> | null): boolean {
+	return !!user && (user.role === 'admin' || user.technicalManager);
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -58,6 +65,7 @@ export async function getSessionUser(token: string | undefined): Promise<Session
 			'users.email',
 			'users.role',
 			'users.status',
+			'users.technical_manager',
 			'sessions.expires_at'
 		])
 		.where('sessions.token', '=', token)
@@ -75,6 +83,7 @@ export async function getSessionUser(token: string | undefined): Promise<Session
 		name: row.name,
 		email: row.email,
 		role: row.role,
-		status: row.status
+		status: row.status,
+		technicalManager: row.technical_manager
 	};
 }

@@ -303,6 +303,19 @@ a.card:hover {
 	text-decoration: line-through;
 	color: var(--ink-faint);
 }
+/* airworthiness (Phase 15): due states and work-order states */
+.status.due_soon,
+.status.in_tolerance,
+.status.undefined,
+.status.open {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+.status.complete,
+.status.released {
+	background: var(--teal-soft);
+	color: var(--teal);
+}
 
 /* ---------- buttons ---------- */
 .btn {
@@ -386,6 +399,12 @@ a.card:hover {
 	font-family: var(--sans);
 	width: 100%;
 	min-width: 0;
+}
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+	background: var(--surface-2);
+	color: var(--ink-faint);
 }
 .field input[type='date'],
 .field input[type='time'] {

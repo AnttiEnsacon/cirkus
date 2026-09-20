@@ -13,6 +13,7 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"migrate": "node db/migrate.js",
+		"test:unit": "vitest run",
 		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
@@ -34,7 +35,8 @@
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
-		"vite": "^8.0.16"
+		"vite": "^8.0.16",
+		"vitest": "^5.0.1"
 	},
 	"dependencies": {
 		"bcryptjs": "^2.4.3",

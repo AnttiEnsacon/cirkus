@@ -1,5 +1,17 @@
-import { Pool } from 'pg';
+import pg, { Pool } from 'pg';
 import { Kysely, PostgresDialect, type Generated, type ColumnType } from 'kysely';
+
+// Postgres `date` columns come back as 'YYYY-MM-DD' strings, not as JS
+// Dates. pg's default turns a date into a Date at *local* midnight, which
+// every page then formatted in UTC — on a server east of UTC (a Helsinki
+// laptop) that showed the previous day. Production runs in UTC and never
+// saw it; the Playwright expenses flow did. A string is unambiguous, and
+// `new Date('2026-09-05')` is UTC midnight, so the existing
+// formatUtcDate(new Date(x)) calls keep working everywhere. (Phase 15)
+pg.types.setTypeParser(pg.types.builtins.DATE, (v) => v);
+
+/** A `date` column: 'YYYY-MM-DD' in and out. */
+export type DateString = ColumnType<string, string, string>;
 
 export type UserRole = 'admin' | 'pilot';
 export type UserStatus = 'pending' | 'approved' | 'rejected';
@@ -13,6 +25,10 @@ export interface UsersTable {
 	status: UserStatus;
 	/** Business-partner id in Procountor; invoices need it. */
 	procountor_partner_id: number | null;
+	/** May edit the airworthiness programme, adjustments and the baseline (Phase 15). */
+	technical_manager: Generated<boolean>;
+	/** Recorded on a pilot-owner release (M2); not validated against any register. */
+	licence_no: string | null;
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, string>;
 }
@@ -120,14 +136,14 @@ export interface InvoicesTable {
 	invoice_seq: number;
 	invoice_number: ColumnType<string, never, never>;
 	pilot_id: string;
-	period_start: ColumnType<Date, string, string>;
-	period_end: ColumnType<Date, string, string>;
+	period_start: DateString;
+	period_end: DateString;
 	status: Generated<InvoiceStatus>;
 	subtotal: ColumnType<string, number | string | undefined, number | string>;
 	total_amount: ColumnType<string, number | string | undefined, number | string>;
 	currency: Generated<string>;
 	issued_at: ColumnType<Date, string | undefined, string>;
-	due_date: ColumnType<Date, string, string>;
+	due_date: DateString;
 	paid_at: ColumnType<Date | null, string | null | undefined, string | null>;
 	paid_reference: string | null;
 	cancelled_at: ColumnType<Date | null, string | null | undefined, string | null>;
@@ -168,7 +184,7 @@ export interface ExpenseCategoriesTable {
 export interface ExpensesTable {
 	id: Generated<string>;
 	user_id: string;
-	receipt_date: ColumnType<Date, string, string>;
+	receipt_date: DateString;
 	vendor: string;
 	total_amount: ColumnType<string, number | string, number | string>;
 	notes: string | null;
@@ -214,6 +230,128 @@ export interface UserActionsTable {
 	user_agent: string | null;
 }
 
+
+/* ---------- airworthiness (Phase 15) — see db/migrations/0015_airworthiness_core.sql ---------- */
+
+export type MxHoursSource = 'tacho' | 'block' | 'airborne';
+export type MxAmpBasis = 'ica' | 'mip';
+export type MxTaskSource = 'ica' | 'mip' | 'als' | 'ad' | 'sb' | 'owner';
+export type MxAnchorKind = 'last_compliance' | 'install' | 'manufacture' | 'fixed';
+export type MxResetRule = 'from_actual' | 'from_original';
+export type MxWorkOrderKind = 'setup_baseline' | 'scheduled' | 'unscheduled' | 'pilot_owner' | 'defect';
+export type MxWorkOrderStatus = 'open' | 'released';
+
+/** numeric(…) columns: strings out of pg, numbers or strings in. */
+type Numeric = ColumnType<string, number | string, number | string>;
+type NumericNullable = ColumnType<string | null, number | string | null, number | string | null>;
+/** numeric(…) with a default. */
+type NumericDefault = ColumnType<string, number | string | undefined, number | string>;
+
+/** One row per tracked aircraft. */
+export interface MxAircraftTable {
+	aircraft_id: string;
+	msn: string | null;
+	year_built: number | null;
+	mtow_kg: number | null;
+	hours_source: Generated<MxHoursSource>;
+	baseline_at: DateString;
+	baseline_hours: Numeric;
+	baseline_landings: Generated<number>;
+	amp_basis: Generated<MxAmpBasis>;
+	amp_reference: string | null;
+	amp_declared_at: ColumnType<string | null, string | null, string | null>;
+	amp_declared_by: string | null;
+	amp_reviewed_at: ColumnType<string | null, string | null, string | null>;
+	warn_hours: NumericDefault;
+	warn_days: Generated<number>;
+	warn_landings: Generated<number>;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface MxUsageAdjustmentsTable {
+	id: Generated<string>;
+	aircraft_id: string;
+	on_date: DateString;
+	hours_delta: NumericDefault;
+	landings_delta: Generated<number>;
+	reason: string;
+	entered_by: string;
+	supersedes_id: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export interface MxTasksTable {
+	id: Generated<string>;
+	aircraft_id: string;
+	code: string;
+	title: string;
+	source: MxTaskSource;
+	source_ref: string | null;
+	interval_hours: NumericNullable;
+	interval_months: number | null;
+	interval_landings: number | null;
+	one_time: Generated<boolean>;
+	anchor_kind: Generated<MxAnchorKind>;
+	anchor_date: ColumnType<string | null, string | null, string | null>;
+	anchor_hours: NumericNullable;
+	anchor_landings: number | null;
+	tolerance_hours: NumericDefault;
+	tolerance_days: Generated<number>;
+	tolerance_landings: Generated<number>;
+	reset_rule: Generated<MxResetRule>;
+	pilot_owner_allowed: Generated<boolean>;
+	active: Generated<boolean>;
+	notes: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface MxWorkOrdersTable {
+	id: Generated<string>;
+	aircraft_id: string;
+	kind: MxWorkOrderKind;
+	status: Generated<MxWorkOrderStatus>;
+	title: string;
+	opened_at: DateString;
+	opened_by: string;
+	released_at: ColumnType<string | null, string | null, string | null>;
+	released_hours: NumericNullable;
+	released_landings: number | null;
+	performed_by_org: string | null;
+	crs_name: string | null;
+	crs_licence: string | null;
+	crs_text: string | null;
+	release_hash: string | null;
+	released_by: string | null;
+	notes: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface MxWorkOrderItemsTable {
+	id: Generated<string>;
+	work_order_id: string;
+	task_id: string | null;
+	description: string;
+	reference_data: string | null;
+	done_on: ColumnType<string | null, string | null, string | null>;
+	done_hours: NumericNullable;
+	done_landings: number | null;
+	position: Generated<number>;
+}
+
+/** The view: items of released orders that name a task. Read-only. */
+export interface MxTaskComplianceView {
+	task_id: string;
+	aircraft_id: string;
+	work_order_id: string;
+	kind: MxWorkOrderKind;
+	done_on: ColumnType<string | null, never, never>;
+	done_hours: ColumnType<string | null, never, never>;
+	done_landings: ColumnType<number | null, never, never>;
+}
+
 // Table interfaces are added here as migrations introduce them.
 export interface Database {
 	schema_info: {
@@ -235,6 +373,12 @@ export interface Database {
 	expense_lines: ExpenseLinesTable;
 	receipt_images: ReceiptImagesTable;
 	user_actions: UserActionsTable;
+	mx_aircraft: MxAircraftTable;
+	mx_usage_adjustments: MxUsageAdjustmentsTable;
+	mx_tasks: MxTasksTable;
+	mx_work_orders: MxWorkOrdersTable;
+	mx_work_order_items: MxWorkOrderItemsTable;
+	mx_task_compliance: MxTaskComplianceView;
 }
 
 const pool = new Pool({

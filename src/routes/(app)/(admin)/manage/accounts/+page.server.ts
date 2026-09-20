@@ -8,7 +8,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async () => {
 	const users = await db
 		.selectFrom('users')
-		.select(['id', 'name', 'email', 'role', 'status', 'password_hash', 'procountor_partner_id'])
+		.select(['id', 'name', 'email', 'role', 'status', 'password_hash', 'procountor_partner_id', 'technical_manager', 'licence_no'])
 		.orderBy('name', 'asc')
 		.execute();
 
@@ -63,6 +63,8 @@ export const actions: Actions = {
 			.toLowerCase();
 		const role = String(form.get('role') ?? '');
 		const status = String(form.get('status') ?? '');
+		const technical_manager = form.get('technical_manager') === 'on';
+		const licence_no = String(form.get('licence_no') ?? '').trim() || null;
 
 		if (!id || !name || !email) return fail(400, { error: 'Name and email are required.' });
 		if (role !== 'admin' && role !== 'pilot') return fail(400, { error: 'Invalid role.' });
@@ -77,10 +79,13 @@ export const actions: Actions = {
 				email,
 				role: role as 'admin' | 'pilot',
 				status: status as 'pending' | 'approved' | 'rejected',
+				technical_manager,
+				licence_no,
 				updated_at: new Date().toISOString()
 			})
 			.where('id', '=', id)
 			.execute();
+		audit(event, { action: 'user.update', entity: ['user', id], details: { role, status, technical_manager } });
 	},
 
 	setPassword: async (event) => {
