@@ -320,6 +320,31 @@ README.md, docs/HANDOFF.md, docs/MAINTENANCE_PLAN.md
 
 About three days.
 
+## As built
+
+Everything in the steps above, plus what the building decided:
+
+- **Tasks follow the swap.** At release, a task whose `component_id` is
+  the removed component is re-pointed at the installed one — the 500 h
+  magneto inspection belongs to whatever magneto is fitted.
+- **Counters never go below the fitting readings.** The log can lag the
+  mechanic's reading (the release says 1010.0 h, Cirkus sums 1002.8 h);
+  a component fitted "at 1010.0 h" reads its TSN at fitting until the log
+  catches up, not a negative number. The Δ chip on the released order
+  shows the gap.
+- **"Already fitted"** on the Components page records an installation
+  without a work order — the setup record for the engine, propeller,
+  parachute and the rest, with the aircraft readings from the logbook.
+- **A deferral needs the assessment first** (affects airworthiness = no);
+  closed defects can be reopened, rectified ones cannot.
+- **Task page history** lists every compliance (baseline or work order)
+  with a link; the *applies to* select lists every component, installed
+  ones first.
+- **The release date has no browser `max`** so the server's message shows
+  and nothing typed is lost; the CRS name is `required` in the browser.
+- **e2e:** `hydrated(page)` in `helpers.ts` before touching a select or
+  radio after a navigation.
+
 ## Open points
 
 1. **Non-serialised parts** (hoses, filters, spark plugs) are *parts

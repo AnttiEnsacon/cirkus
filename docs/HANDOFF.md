@@ -1,8 +1,9 @@
 # Cirkus — handoff
 
 *Rewritten 20 September 2026, after Phase 11 (Procountor invoicing);
-Phase 15 (airworthiness) added the same day. The first version of this
-file (8 September, end of MVP) is in git history.
+Phases 15 and 16 (airworthiness: programme, then work orders, components,
+defects) added the same day. The first version of this file (8 September,
+end of MVP) is in git history.
 Read `README.md` first for what the system is, how to run, test and deploy
 it, and the Azure and Procountor gotchas; this document is about where
 development stands, how the work has been done, and what to do next.*
@@ -51,6 +52,11 @@ What exists, by route:
 | `/airworthiness/[tail]/programme`, `…/programme/tasks/[id]` | admin, technical manager | profile, tasks, CSV import (+ `…/programme/template` download); the task form with its "computed now" card |
 | `/airworthiness/[tail]/usage` | admin, technical manager | how the counters add up, adjustments (supersede, never edit), flights since the baseline |
 | `/airworthiness/[tail]/baseline` | admin, technical manager | the baseline work order: draft any number of times, release once |
+| `/airworthiness/[tail]/work-orders`, `…/work-orders/[id]` | admin, technical manager | open / released / cancelled; the order: items (task, parts, component swap, defect), release with CRS and hash, cancel |
+| `/airworthiness/[tail]/components`, `…/components/[id]` | admin, technical manager | installed (TSN/TSO/CSN, tasks), spares and removed, add (with "already fitted"); history, tasks, work orders, identity edits |
+| `/airworthiness/[tail]/defects`, `…/defects/[id]` | admin, technical manager | the list; assess, defer (ML.A.403), close, reopen, open a defect work order |
+| `/defects`, `/defects/new`, `/defects/[id]/image/[imageId]` | all | open defects per aircraft, my reports; report with photo and a link to my last flight |
+| `/pilot-owner`, `/pilot-owner/new` | co-owner with a licence no. | my releases; release Appendix II tasks in one step |
 | `/internal/sync` (POST) | GitHub Actions | hourly Procountor poll, `Authorization: Bearer $PROCOUNTOR_SYNC_SECRET` |
 | `/healthz` | anyone | DB check |
 
@@ -149,11 +155,36 @@ supersede/cancel; audit entries described on *Activity*.
    OH-KML). Every flight logged after that day counts.
 3. Mark the technical managers on *Accounts*.
 
-**Next phases** (`docs/MAINTENANCE_PLAN.md`): M2 work orders with CRS
-release, components, defects (phone-first report); M3 directives, mods,
-W&B, ARC, documents; M4 the ARC package and the airworthiness chip on
-Home/Book; M5 the publications inbox (FAA ADs via the Federal Register
-API, EASA biweekly CSV, Cirrus SB page) with Claude extracting the fields.
+## 2c. Phase 16 — work orders, components, defects, pilot-owner
+
+Done and verified (flow 07 plus 41 unit tests; `docs/PHASE_16_PLAN.md`):
+work orders (open from the due list → items with task, reference, parts
+used, component swap, defect → release with readings, shop, CRS, hash;
+cancel with a reason; frozen after release), components with installations
+and TSN/TSO/CSN (the "already fitted" setup record; swaps from work
+orders; tasks applying to a component, anchors *install*/*manufacture*),
+defects reported by any pilot from the phone with a photo, assessed /
+deferred / closed by the technical manager, rectified by a defect work
+order, driving the aircraft state; pilot-owner releases in one step from
+the phone (co-owner + licence number); Home lists open defects; the
+dashboard has open-defect and open-work-order cards; Activity describes
+every action.
+
+Decisions taken while building (not in the plan): a task on a removed
+component follows the one installed in its place at release; component
+counters never read below the fitting readings (the log can lag the
+mechanic's reading); a deferral needs the defect assessed as not affecting
+airworthiness first; closed defects can be reopened, rectified ones not.
+
+**Before the first real use, in addition to §2b:** record the engine,
+propeller, CAPS and other serialised parts on Components with their
+fitting readings from the logbooks; point the component tasks at them.
+
+**Next phases** (`docs/MAINTENANCE_PLAN.md`): M3 directives, mods, W&B,
+ARC, documents (the CRS PDF on a work order); M4 the ARC package and the
+airworthiness chip on Home/Book; M5 the publications inbox (FAA ADs via
+the Federal Register API, EASA biweekly CSV, Cirrus SB page) with Claude
+extracting the fields.
 
 ## 4. How the code is organised, and the conventions to keep
 
@@ -222,6 +253,19 @@ API, EASA biweekly CSV, Cirrus SB page) with Claude extracting the fields.
 - **Unit tests.** Vitest, `src/**/*.test.ts`, `npm run test:unit`, in CI's
   *check* job (Phase 15). Only for pure modules; pages and queries stay
   with Playwright.
+- **Hydration in the flows.** A `<select>` or radio changed before Svelte
+  hydrates is reset to its bound state when it does (text inputs keep
+  their value). After a navigation and before touching a select or radio,
+  `await hydrated(page)` (`tests/e2e/helpers.ts`, network idle).
+- **Airworthiness modules** (`src/lib/server/airworthiness/`): `due.ts`
+  (pure calculator, the aircraft state), `components.ts` (pure component
+  arithmetic), `parts.ts` (parts lines, canonical JSON + SHA-256),
+  `counters.ts` (sums from the log, also at a past date), `programme.ts`
+  (the loaders that put them together), `workorders.ts` (open / item /
+  cancel / release in one transaction; the pilot-owner release),
+  `defects.ts`, `inventory.ts` (components from the DB), `pilotOwner.ts`
+  (eligibility), `present.ts` (labels), `tasks.ts` (the task validator),
+  `csv.ts`, `baseline.ts`.
 
 ## 5. How changes have been made and reviewed
 
@@ -280,8 +324,8 @@ exist, plus whatever the real API disagrees with.
 an email or Procountor's own notification; makes the admin's job
 "check the list" rather than "press the button".
 
-**Airworthiness M2–M5** — `docs/MAINTENANCE_PLAN.md`; M2 (work orders,
-components, defects) is the next useful slice.
+**Airworthiness M3–M5** — `docs/MAINTENANCE_PLAN.md`; M3 (documents on
+work orders, the AD/SB register, the ARC) is the next useful slice.
 
 **Later — customers / guest rate**, only if the club rents to non-owners.
 

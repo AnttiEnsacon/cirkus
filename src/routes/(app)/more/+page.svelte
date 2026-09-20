@@ -39,6 +39,25 @@
 		</a>
 	</div>
 
+	<p class="section-label">Aircraft</p>
+	<div class="card tight">
+		<a href="/defects/new" class="list-item link">
+			<span class="list-icon amber"><Icon name="flag" /></span>
+			<span class="list-main"><span class="list-title">Report a defect</span><span class="list-sub">Something wrong with the aircraft — photo and a line</span></span>
+			<Icon name="chevron" />
+		</a>
+		<a href="/defects" class="list-item link">
+			<span class="list-icon"><Icon name="list" /></span>
+			<span class="list-main"><span class="list-title">Open defects</span></span>
+			<Icon name="chevron" />
+		</a>
+		<a href="/pilot-owner" class="list-item link">
+			<span class="list-icon"><Icon name="wrench" /></span>
+			<span class="list-main"><span class="list-title">Pilot-owner maintenance</span><span class="list-sub">Oil and other Appendix II work, released by a co-owner</span></span>
+			<Icon name="chevron" />
+		</a>
+	</div>
+
 	{#if data.user.role === 'admin'}
 		<p class="section-label">Admin</p>
 		<div class="card tight">

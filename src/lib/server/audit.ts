@@ -46,7 +46,17 @@ const ENTITY_BY_ROUTE: Record<string, string> = {
 	'/(app)/(airworthiness)/airworthiness/[tail]/programme': 'aircraft',
 	'/(app)/(airworthiness)/airworthiness/[tail]/programme/tasks/[id]': 'mx_task',
 	'/(app)/(airworthiness)/airworthiness/[tail]/usage': 'aircraft',
-	'/(app)/(airworthiness)/airworthiness/[tail]/baseline': 'mx_work_order'
+	'/(app)/(airworthiness)/airworthiness/[tail]/baseline': 'mx_work_order',
+	'/(app)/(airworthiness)/airworthiness/[tail]/work-orders': 'mx_work_order',
+	'/(app)/(airworthiness)/airworthiness/[tail]/work-orders/[id]': 'mx_work_order',
+	'/(app)/(airworthiness)/airworthiness/[tail]/components': 'mx_component',
+	'/(app)/(airworthiness)/airworthiness/[tail]/components/[id]': 'mx_component',
+	'/(app)/(airworthiness)/airworthiness/[tail]/defects': 'mx_defect',
+	'/(app)/(airworthiness)/airworthiness/[tail]/defects/[id]': 'mx_defect',
+	'/(app)/defects': 'mx_defect',
+	'/(app)/defects/new': 'mx_defect',
+	'/(app)/pilot-owner': 'mx_work_order',
+	'/(app)/pilot-owner/new': 'mx_work_order'
 };
 /** Default-action pages: what their one action does. */
 const DEFAULT_VERB: Record<string, string> = {

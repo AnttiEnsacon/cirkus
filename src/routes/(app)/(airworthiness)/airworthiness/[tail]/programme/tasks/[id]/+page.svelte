@@ -18,7 +18,8 @@
 			one_time: g('one_time') === 'yes', anchor_kind: g('anchor_kind') || 'last_compliance',
 			anchor_date: g('anchor_date'), anchor_hours: g('anchor_hours'), anchor_landings: g('anchor_landings'),
 			tolerance_hours: g('tolerance_hours'), tolerance_days: g('tolerance_days'), tolerance_landings: g('tolerance_landings'),
-			reset_rule: g('reset_rule') || 'from_original', pilot_owner_allowed: g('pilot_owner_allowed') === 'yes', notes: g('notes')
+			reset_rule: g('reset_rule') || 'from_original', pilot_owner_allowed: g('pilot_owner_allowed') === 'yes', notes: g('notes'),
+			component_id: g('component_id')
 		};
 	});
 </script>
@@ -42,7 +43,7 @@
 	<div class="cols c21">
 		<form method="POST" action="?/save" class="card">
 			{#key data.task?.id ?? 'new'}
-				<TaskForm {initial} isNew={data.isNew} />
+				<TaskForm {initial} isNew={data.isNew} components={data.components} />
 			{/key}
 		</form>
 
@@ -61,9 +62,23 @@
 					</dl>
 					<p class="hint">Recomputed on every save from the values on the left and today's counters.</p>
 				</div>
+				{#if data.component}
+					<div class="card sub stack">
+						<p class="section-label">Component</p>
+						<p class="faint"><a href="/airworthiness/{data.tail}/components/{data.component.id}">{data.component.label}</a>{data.component.installed ? '' : ' — not installed on this aircraft'}. Intervals count in its TSN and CSN.</p>
+					</div>
+				{/if}
 				<div class="card sub stack">
 					<p class="section-label">History</p>
-					<p class="faint">Compliance history appears here once work orders exist (M2). Until then the baseline is the only record.</p>
+					{#if data.history.length === 0}
+						<p class="faint">No compliance recorded yet — the baseline or a released work order with this task puts one here.</p>
+					{:else}
+						<ul class="history">
+							{#each data.history as h (h.id)}
+								<li><span class="mono">{h.on}</span> · {h.hours}{h.landings !== '—' ? ` · ${h.landings}` : ''} — <a href={h.isBaseline ? `/airworthiness/${data.tail}/baseline` : `/airworthiness/${data.tail}/work-orders/${h.id}`}>{h.title}</a>{#if h.crs}<span class="faint"> · CRS {h.crs}</span>{/if}</li>
+							{/each}
+						</ul>
+					{/if}
 				</div>
 				{#if data.task}
 					<form method="POST" action={data.task.active ? '?/deactivate' : '?/reactivate'} class="card sub stack">
@@ -100,5 +115,12 @@
 	}
 	.btn {
 		align-self: flex-start;
+	}
+	.history {
+		margin: 0;
+		padding-left: 18px;
+		font-size: 13px;
+		display: grid;
+		gap: 4px;
 	}
 </style>

@@ -121,6 +121,33 @@ function describe(action: string, d: Record<string, unknown>, ok: boolean): stri
 			return `Saved the ${s('tail')} baseline draft (${s('rows')} rows, ${s('baseline_at')} at ${s('baseline_hours')} h / ${s('baseline_landings')} landings)`;
 		case 'airworthiness.baseline_release':
 			return `Released the ${s('tail')} baseline: ${s('baseline_at')} at ${s('baseline_hours')} h / ${s('baseline_landings')} landings, ${s('rows')} rows, hash ${s('hash')}`;
+		// Phase 16: work orders, components, defects, pilot-owner
+		case 'airworthiness.work_order_open':
+			return `Opened a ${s('kind').replace('_', '-')} work order on ${s('tail')}: ${s('title')}${s('tasks') ? ` (${s('tasks')} tasks)` : ''}`;
+		case 'airworthiness.work_order_item_add':
+			return `Added an item to a ${s('tail')} work order: ${s('description')}${s('newComponent') ? ` — new component ${s('newComponent')}` : ''}`;
+		case 'airworthiness.work_order_item_remove':
+			return `Removed an item from a ${s('tail')} work order`;
+		case 'airworthiness.work_order_release':
+			return `Released a ${s('tail')} work order: ${s('released_at')} at ${s('hours')} h / ${s('landings')} landings (Cirkus computed ${s('computed_hours')} h), ${s('items')} items, CRS ${s('crs')}, hash ${s('hash')}`;
+		case 'airworthiness.work_order_cancel':
+			return `Cancelled a ${s('tail')} work order — ${s('reason')}`;
+		case 'airworthiness.component_add':
+			return `Added component ${s('part_number')} / ${s('serial_number')} (${s('description')})${s('fitted') ? `, fitted to ${s('tail')} on ${s('fitted')}` : ''}`;
+		case 'airworthiness.component_update':
+			return `Edited component ${s('description')}`;
+		case 'airworthiness.defect_report':
+			return `Reported defect #${s('number')} on ${s('tail')}: ${s('title')}${s('photos') && s('photos') !== '0' ? ` (${s('photos')} photo${s('photos') === '1' ? '' : 's'})` : ''}`;
+		case 'airworthiness.defect_assess':
+			return `Assessed a ${s('tail')} defect: ${d.affects_airworthiness ? 'affects airworthiness' : 'does not affect airworthiness'}${s('assessment') ? ` — ${s('assessment')}` : ''}`;
+		case 'airworthiness.defect_defer':
+			return `Deferred a ${s('tail')} defect until ${s('deferral_limit_date') || '—'}${s('deferral_limit_hours') ? ` / ${s('deferral_limit_hours')} h` : ''} — ${s('deferral_basis')} (${s('deferred_by')})`;
+		case 'airworthiness.defect_close':
+			return `Closed a ${s('tail')} defect without work — ${s('reason')}`;
+		case 'airworthiness.defect_reopen':
+			return `Reopened a ${s('tail')} defect`;
+		case 'airworthiness.pilot_owner_release':
+			return `Pilot-owner release on ${s('tail')}: ${Array.isArray(d.tasks) ? (d.tasks as string[]).join(', ') : ''} on ${s('released_at')} at ${s('hours')} h, signed ${s('crs')} (${s('licence')}), hash ${s('hash')}`;
 		default: {
 			const [entity, verb] = action.split('.');
 			return `${verb ?? action} ${entity ?? ''}`.replace(/_/g, ' ').trim();

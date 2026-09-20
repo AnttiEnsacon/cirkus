@@ -211,3 +211,26 @@ describe('10 · aircraftStatus', () => {
 		expect(s).toEqual({ state: 'airworthy', reasons: [] });
 	});
 });
+
+describe('aircraftStatus with defects (Phase 16)', () => {
+	const base = { baselineReleased: true, declaredAt: '2026-09-01', reviewedAt: null, today: '2026-09-20', hoursNow: 2478.2 };
+	const d = (over: Partial<import('./due').DefectForStatus>): import('./due').DefectForStatus => ({ number: 3, title: 'Nose wheel shimmy', status: 'open', affects: null, limitDate: null, limitHours: null, ...over });
+	it('unassessed → attention; affecting airworthiness → grounded; not hazardous but open → attention', () => {
+		expect(aircraftStatus([], { ...base, defects: [d({})] })).toEqual({ state: 'attention', reasons: ['Defect #3 (Nose wheel shimmy) is awaiting assessment.'] });
+		expect(aircraftStatus([], { ...base, defects: [d({ affects: true })] })).toEqual({ state: 'grounded', reasons: ['Defect #3 (Nose wheel shimmy) affects airworthiness — rectify before flight.'] });
+		expect(aircraftStatus([], { ...base, defects: [d({ affects: false })] }).reasons[0]).toBe('Defect #3 (Nose wheel shimmy) is open — rectify or defer it.');
+	});
+	it('deferred inside its limit → attention; past the date or the hours → grounded', () => {
+		const inside = aircraftStatus([], { ...base, defects: [d({ status: 'deferred', affects: false, limitDate: '2026-10-12', limitHours: 2500 })] });
+		expect(inside).toEqual({ state: 'attention', reasons: ['Deferred defect #3 (Nose wheel shimmy) — until 2026-10-12 / 2500.0 h.'] });
+		expect(aircraftStatus([], { ...base, defects: [d({ status: 'deferred', affects: false, limitDate: '2026-09-19' })] }).state).toBe('grounded');
+		expect(aircraftStatus([], { ...base, defects: [d({ status: 'deferred', affects: false, limitHours: 2478.1 })] }).reasons[0]).toBe('Deferred defect #3 (Nose wheel shimmy) is past its limit (2478.1 h).');
+		expect(aircraftStatus([], { ...base, defects: [d({ status: 'deferred', affects: false, limitHours: 2478.2 })] }).state).toBe('attention');
+	});
+	it('grounding reasons come before attention ones', () => {
+		const s = aircraftStatus([], { ...base, defects: [d({ number: 1 }), d({ number: 2, affects: true })] });
+		expect(s.state).toBe('grounded');
+		expect(s.reasons[0]).toMatch(/^Defect #2/);
+	});
+});
+

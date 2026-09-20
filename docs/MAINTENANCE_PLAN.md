@@ -95,6 +95,8 @@ Pilots see one thing: an airworthiness chip on *Home* and *Book*
 
 ## Phase M1 — programme, counters, what's due
 
+*Built as Phase 15 (`docs/PHASE_15_PLAN.md`), merged.*
+
 The valuable slice on its own: OH-KML's programme in the system, hours
 and landings from the flight log, and a page that says what is due
 when. No work orders yet beyond the baseline.
@@ -370,6 +372,13 @@ About three days. One migration, one branch (`phase-NN`).
 ---
 
 ## Phase M2 — work orders, releases, components, defects
+
+*Built as Phase 16 (`docs/PHASE_16_PLAN.md`). Decisions taken on the way:
+a task on a removed component follows the one fitted in its place; a
+component never reads below its fitting readings; a deferral needs the
+"does not affect airworthiness" assessment first; parts already on the
+aircraft are recorded on Components as "already fitted" (an installation
+with no work order).*
 
 Turns the baseline mechanism into the real maintenance record.
 

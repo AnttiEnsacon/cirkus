@@ -14,7 +14,7 @@
 		<a href="/log" class="btn sm"><Icon name="pencil" size={16} /> Log a flight</a>
 	</div>
 
-	{#if data.saved}<p class="alert notice">Flight saved.</p>{/if}
+	{#if data.saved}<p class="alert notice">Flight saved. Anything wrong with the aircraft? <a href="/defects/new">Report a defect</a> — it links to this flight.</p>{/if}
 	{#if form?.error}<p class="alert error">{form.error}</p>{/if}
 
 	<div class="card stats3">

@@ -10,7 +10,10 @@
 		{ href: '/log', label: 'Log', icon: 'pencil' },
 		{ href: '/logbook', label: 'Logbook', icon: 'list' },
 		{ href: '/invoices', label: 'Invoices', icon: 'receipt' },
-		{ href: '/expenses', label: 'Expenses', icon: 'wallet' }
+		{ href: '/expenses', label: 'Expenses', icon: 'wallet' },
+		// Phase 16: every pilot reports defects; co-owners release Appendix II work.
+		{ href: '/defects', label: 'Defects', icon: 'flag' },
+		{ href: '/pilot-owner', label: 'Pilot-owner', icon: 'wrench' }
 	];
 	const adminNav = [
 		{ href: '/manage/approvals', label: 'Approvals', icon: 'shield' },
@@ -31,7 +34,7 @@
 	const path = $derived(page.url.pathname);
 	const isActive = (href: string) => path === href || path.startsWith(href + '/');
 	const onAdminPage = $derived(path.startsWith('/manage') || path.startsWith('/airworthiness'));
-	const moreActive = $derived(onAdminPage || path.startsWith('/invoices') || path.startsWith('/expenses') || path === '/more');
+	const moreActive = $derived(onAdminPage || path.startsWith('/invoices') || path.startsWith('/expenses') || path.startsWith('/defects') || path.startsWith('/pilot-owner') || path === '/more');
 	const showAirworthiness = $derived(data.user.role === 'admin' || data.user.technicalManager);
 	const initials = $derived(
 		data.user.name

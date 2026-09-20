@@ -3,7 +3,7 @@
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 	const needsAttention = $derived(
-		!!data.admin && (data.admin.pendingAccounts > 0 || Number(data.admin.unbilled) > 0 || Number(data.admin.expenses) > 0)
+		(!!data.admin && (data.admin.pendingAccounts > 0 || Number(data.admin.unbilled) > 0 || Number(data.admin.expenses) > 0)) || data.unassessed > 0
 	);
 </script>
 
@@ -16,18 +16,29 @@
 		<h1>Hello, {data.firstName}</h1>
 	</div>
 
-	{#if data.admin && needsAttention}
+	{#if needsAttention}
 		<div class="card teal stack">
 			<p class="section-label" style="color:var(--teal)">Needs your attention</p>
-			{#if data.admin.pendingAccounts > 0}
+			{#if data.admin && data.admin.pendingAccounts > 0}
 				<a href="/manage/approvals" class="row attn"><Icon name="shield" /><span>{data.admin.pendingAccounts} account{data.admin.pendingAccounts === 1 ? '' : 's'} waiting for approval</span><Icon name="chevron" /></a>
 			{/if}
-			{#if Number(data.admin.unbilled) > 0}
+			{#if data.admin && Number(data.admin.unbilled) > 0}
 				<a href="/manage/invoices" class="row attn"><Icon name="euro" /><span>€{data.admin.unbilled} of flying not yet invoiced</span><Icon name="chevron" /></a>
 			{/if}
-			{#if Number(data.admin.expenses) > 0}
+			{#if data.admin && Number(data.admin.expenses) > 0}
 				<a href="/manage/expenses" class="row attn"><Icon name="wallet" /><span>€{data.admin.expenses} of expenses to pay back</span><Icon name="chevron" /></a>
 			{/if}
+			{#if data.unassessed > 0}
+				<a href="/airworthiness" class="row attn"><Icon name="flag" /><span>{data.unassessed} defect{data.unassessed === 1 ? '' : 's'} waiting for assessment</span><Icon name="chevron" /></a>
+			{/if}
+		</div>
+	{/if}
+
+	{#if data.defects.length > 0}
+		<div class="card stack defects">
+			{#each data.defects as d (d.tail)}
+				<a href="/defects" class="row attn"><Icon name="flag" /><span><span class="tailnum">{d.tail}</span> · {d.open} open defect{d.open === 1 ? '' : 's'} — {d.first}{d.open > 1 ? ' …' : ''}</span>{#if d.grounded}<span class="chip danger small">grounded</span>{/if}<Icon name="chevron" /></a>
+			{/each}
 		</div>
 	{/if}
 
@@ -91,6 +102,14 @@
 	}
 	.attn span {
 		flex: 1 1 auto;
+	}
+	.defects {
+		border-color: var(--accent);
+	}
+	.chip.small {
+		padding: 3px 8px;
+		font-size: 11px;
+		flex: 0 0 auto;
 	}
 	.stat .n.muted {
 		color: var(--ink-faint);

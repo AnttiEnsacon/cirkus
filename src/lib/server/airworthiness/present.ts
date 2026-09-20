@@ -123,3 +123,18 @@ export function dueRow(i: ProgrammeItem): DueRow {
 		missing: i.due.missing.join(', ')
 	};
 }
+
+/* ---------- Phase 16 ---------- */
+
+export const KIND_LABEL: Record<string, string> = {
+	setup_baseline: 'Baseline',
+	scheduled: 'Scheduled',
+	unscheduled: 'Unscheduled',
+	pilot_owner: 'Pilot-owner',
+	defect: 'Defect'
+};
+
+export const DEFECT_STATUS_LABEL: Record<string, string> = { open: 'Open', deferred: 'Deferred', rectified: 'Rectified', closed: 'Closed' };
+/** The pill class per defect status (reuses the existing pill colours). */
+export const DEFECT_STATUS_PILL: Record<string, string> = { open: 'open', deferred: 'due_soon', rectified: 'released', closed: 'complete' };
+

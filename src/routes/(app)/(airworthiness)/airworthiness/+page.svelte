@@ -35,10 +35,11 @@
 					</div>
 				</div>
 
-				<div class="stats3 stats">
+				<div class="stats3 stats four">
 					<div class="stat"><div class="n">{plane.counters.hours}</div><div class="l">airframe hours ({plane.counters.source})</div></div>
 					<div class="stat"><div class="n">{plane.counters.landings}</div><div class="l">landings</div></div>
 					<div class="stat"><div class="n">{plane.counters.perDay}</div><div class="l">h/day · trailing year</div></div>
+					<a class="stat link" href="/airworthiness/{plane.tail}/defects"><div class="n">{plane.defects?.open ?? 0}</div><div class="l">open {plane.defects?.open === 1 ? 'defect' : 'defects'}{plane.defects?.unassessed ? ` · ${plane.defects.unassessed} unassessed` : ''}</div></a>
 				</div>
 
 				{#if plane.next.length > 0}
@@ -88,6 +89,16 @@
 		border: 1px solid var(--line);
 		border-radius: 12px;
 		padding: 10px 0;
+	}
+	.stats.four {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+	.stats.four > div + a {
+		border-left: 1px solid var(--line);
+	}
+	.stat.link {
+		text-decoration: none;
+		color: inherit;
 	}
 	.next {
 		display: flex;

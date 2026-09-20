@@ -42,6 +42,55 @@
 		</div>
 	</div>
 
+	<div class="cols two">
+		<div class="card stack">
+			<div class="row between wrap">
+				<h2>Open defects</h2>
+				<a href="/airworthiness/{data.tail}/defects" class="faint">all defects</a>
+			</div>
+			{#if data.defects.length === 0}
+				<p class="hint">None open. Pilots report from the phone; each lands here for assessment.</p>
+			{:else}
+				<div class="table-wrap">
+					<table class="table">
+						<tbody>
+							{#each data.defects as d (d.id)}
+								<tr>
+									<td class="mono">#{d.number}</td>
+									<td class="wrap"><a href="/airworthiness/{data.tail}/defects/{d.id}">{d.title}</a><span class="sub">{d.reportedOn} · {d.reportedBy}{d.status === 'deferred' && d.limit ? ` · deferred to ${d.limit}${d.limitSub ? ` ${d.limitSub}` : ''}` : ''}</span></td>
+									<td>{#if d.airworthinessChip}<span class="chip {d.airworthinessChip} small">{d.airworthiness}</span>{:else}<span class="status {d.pill}">{d.statusLabel}</span>{/if}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
+		</div>
+		<div class="card stack">
+			<div class="row between wrap">
+				<h2>Open work orders</h2>
+				<a href="/airworthiness/{data.tail}/work-orders" class="faint">all work orders</a>
+			</div>
+			{#if data.orders.length === 0}
+				<p class="hint">None open. <a href="/airworthiness/{data.tail}/work-orders">Open one</a> from the tasks that are due.</p>
+			{:else}
+				<div class="table-wrap">
+					<table class="table">
+						<tbody>
+							{#each data.orders as o (o.id)}
+								<tr>
+									<td>{o.kind}</td>
+									<td class="wrap"><a href="/airworthiness/{data.tail}/work-orders/{o.id}">{o.title}</a><span class="sub">opened {o.openedAt}{o.openedBy ? ` by ${o.openedBy}` : ''} · {o.items} {o.items === 1 ? 'item' : 'items'}</span></td>
+									<td><span class="status open">Open</span></td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
+		</div>
+	</div>
+
 	<div class="card stack">
 		<div class="row between wrap">
 			<h2>Due list</h2>
@@ -127,5 +176,20 @@
 	}
 	th.num {
 		text-align: right;
+	}
+	.cols.two {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 16px;
+		align-items: start;
+	}
+	@media (min-width: 1000px) {
+		.cols.two {
+			grid-template-columns: 1fr 1fr;
+		}
+	}
+	.chip.small {
+		padding: 3px 8px;
+		font-size: 11px;
 	}
 </style>

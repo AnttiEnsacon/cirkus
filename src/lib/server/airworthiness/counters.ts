@@ -113,3 +113,36 @@ export async function aircraftCounters(aircraftId: string, profile: CounterProfi
 function round1(n: number): number {
 	return Math.round(n * 10) / 10;
 }
+
+/**
+ * The counters as they stood at the end of a past day: baseline + flights
+ * and adjustments up to and including that day. Shown next to a release
+ * form so the mechanic's readings can be compared with the log.
+ */
+export async function aircraftCountersAt(aircraftId: string, profile: CounterProfile, date: string): Promise<{ hours: number; landings: number }> {
+	const hours = hoursExpr(profile.hours_source);
+	if (date <= profile.baseline_at) return { hours: Number(profile.baseline_hours), landings: profile.baseline_landings };
+	const f = await db
+		.selectFrom('flight_log_entries as f')
+		.select([
+			sql<string>`coalesce(sum(${hours}), 0)`.as('hours'),
+			sql<number>`coalesce(sum(f.day_landings + f.night_landings), 0)::int`.as('landings')
+		])
+		.where('f.aircraft_id', '=', aircraftId)
+		.where(afterBaseline(profile.baseline_at))
+		.where(sql<boolean>`(f.block_off_at at time zone 'Europe/Helsinki')::date <= ${date}::date`)
+		.executeTakeFirstOrThrow();
+	const a = await db
+		.selectFrom('mx_usage_adjustments as x')
+		.select([sql<string>`coalesce(sum(x.hours_delta), 0)`.as('hours'), sql<number>`coalesce(sum(x.landings_delta), 0)::int`.as('landings')])
+		.where('x.aircraft_id', '=', aircraftId)
+		.where('x.on_date', '>', profile.baseline_at)
+		.where('x.on_date', '<=', date)
+		.where(({ not, exists, selectFrom }) => not(exists(selectFrom('mx_usage_adjustments as y').select('y.id').whereRef('y.supersedes_id', '=', 'x.id'))))
+		.executeTakeFirstOrThrow();
+	return {
+		hours: round1(Number(profile.baseline_hours) + Number(f.hours) + Number(a.hours)),
+		landings: profile.baseline_landings + f.landings + a.landings
+	};
+}
+

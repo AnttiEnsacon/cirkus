@@ -21,8 +21,9 @@
 		reset_rule: string;
 		pilot_owner_allowed: boolean;
 		notes: string;
+		component_id: string;
 	}
-	let { initial, isNew }: { initial: TaskFormValues; isNew: boolean } = $props();
+	let { initial, isNew, components = [] }: { initial: TaskFormValues; isNew: boolean; components?: { id: string; label: string }[] } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let code = $state(initial.code);
@@ -60,7 +61,10 @@
 	let pilotOwner = $state(initial.pilot_owner_allowed);
 	// svelte-ignore state_referenced_locally
 	let notes = $state(initial.notes);
+	// svelte-ignore state_referenced_locally
+	let componentId = $state(initial.component_id);
 
+	const onComponent = $derived(componentId !== '');
 	const noTolerance = $derived(source === 'als' || source === 'ad');
 	const fixed = $derived(anchorKind === 'fixed');
 </script>
@@ -81,8 +85,18 @@
 			</select>
 		</label>
 		<label class="field"><span>Source reference</span><input name="source_ref" bind:value={sourceRef} placeholder="AMM 05-20-01" /></label>
-		<label class="field"><span>Applies to</span><select disabled><option>Aircraft (components arrive in M2)</option></select></label>
+		<label class="field">
+			<span>Applies to</span>
+			<select name="component_id" bind:value={componentId}>
+				<option value="">Aircraft</option>
+				{#each components as c (c.id)}
+					<option value={c.id}>{c.label}</option>
+				{/each}
+			</select>
+		</label>
 	</div>
+
+	{#if onComponent}<p class="hint">A component task counts in the component's own hours (TSN) and cycles (CSN); the calendar is the same. Anchors <em>install</em> and <em>manufacture</em> take the dates from the component record.</p>{/if}
 
 	<p class="section-label">Interval — whichever comes first</p>
 	<div class="fields three">
@@ -99,8 +113,8 @@
 			<select name="anchor_kind" bind:value={anchorKind}>
 				<option value="last_compliance">Last compliance</option>
 				<option value="fixed">Fixed point (e.g. an AD's effective date)</option>
-				<option value="install" disabled>Component install (M2)</option>
-				<option value="manufacture" disabled>Manufacture date (M2)</option>
+				<option value="install" disabled={!onComponent}>Component install</option>
+				<option value="manufacture" disabled={!onComponent}>Manufacture date</option>
 			</select>
 		</label>
 		<label class="field"><span>Fixed date</span><input name="anchor_date" type="date" bind:value={anchorDate} disabled={!fixed} /></label>
