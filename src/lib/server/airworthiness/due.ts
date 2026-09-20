@@ -241,11 +241,25 @@ export function formatDueAt(l: Limit): string {
 
 export type AircraftState = 'airworthy' | 'attention' | 'grounded';
 
+/** An open or deferred defect, as the status roll-up sees it (Phase 16). */
+export interface DefectForStatus {
+	number: number;
+	title: string;
+	status: 'open' | 'deferred';
+	/** null = not assessed yet */
+	affects: boolean | null;
+	limitDate: string | null;
+	limitHours: number | null;
+}
+
 export interface StatusExtras {
 	baselineReleased: boolean;
 	declaredAt: string | null;
 	reviewedAt: string | null;
 	today: string;
+	/** Phase 16: open and deferred defects, with today's hours for the deferral limits. */
+	defects?: DefectForStatus[];
+	hoursNow?: number;
 }
 
 /**
@@ -281,6 +295,20 @@ export function aircraftStatus(items: { code: string; due: Due }[], extras: Stat
 				break;
 			default:
 				break;
+		}
+	}
+	for (const d of extras.defects ?? []) {
+		const name = `#${d.number} (${d.title})`;
+		if (d.status === 'open') {
+			if (d.affects === true) grounded.push(`Defect ${name} affects airworthiness — rectify before flight.`);
+			else if (d.affects === null) attention.push(`Defect ${name} is awaiting assessment.`);
+			else attention.push(`Defect ${name} is open — rectify or defer it.`);
+		} else {
+			const pastDate = d.limitDate !== null && d.limitDate < extras.today;
+			const pastHours = d.limitHours !== null && extras.hoursNow !== undefined && extras.hoursNow > d.limitHours;
+			const limit = [d.limitDate, d.limitHours === null ? null : `${d.limitHours.toFixed(1)} h`].filter(Boolean).join(' / ');
+			if (pastDate || pastHours) grounded.push(`Deferred defect ${name} is past its limit (${limit}).`);
+			else attention.push(`Deferred defect ${name} — until ${limit}.`);
 		}
 	}
 	if (!extras.baselineReleased) attention.push('No released baseline — the due list is not trustworthy yet.');

@@ -33,7 +33,7 @@
 	{#if form?.saved === 'released'}<p class="alert notice">Baseline released. The dashboard counts from it now.</p>{/if}
 
 	{#if !data.released}
-		<p class="alert notice">The baseline is the day-one record: for every task, when it was last done, read from the logbooks or the CAO's last status list. It is released once. After that, compliance comes only from released work orders (M2).</p>
+		<p class="alert notice">The baseline is the day-one record: for every task, when it was last done, read from the logbooks or the CAO's last status list. It is released once. After that, compliance comes only from released work orders.</p>
 	{/if}
 
 	<form method="POST" class="card stack">
@@ -77,7 +77,7 @@
 		{/if}
 
 		{#if data.released && data.order}
-			<p class="hint">Frozen.{#if data.order.hash} Release hash <span class="mono">{data.order.hash.slice(0, 16)}…</span> — the full hash is in the activity log.{/if} Hours and landings after the baseline come from the flight log and adjustments; compliance from work orders (M2).</p>
+			<p class="hint">Frozen.{#if data.order.hash} Release hash <span class="mono">{data.order.hash.slice(0, 16)}…</span> — the full hash is in the activity log.{/if} Hours and landings after the baseline come from the flight log and adjustments; compliance from released work orders.</p>
 		{:else}
 			<div class="row between wrap">
 				<span class="hint">{filled} of {data.total} recurring tasks have a date. Calendar-only tasks need a date; hour-based ones need hours too. After release the rows are frozen and the dashboard starts counting from them.</span>

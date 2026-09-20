@@ -25,7 +25,9 @@ Reservation, logbook and billing system for **KML Aviation Oy** — one aircraft
 | Post a receipt (photo, total split by category) to be paid back | pilots | `/expenses` |
 | Pay back receipts by bank transfer, mark paid or reject | admins | `/manage/expenses`, `/manage/expense-categories` |
 | Activity log: every sign-in, sign-out and write, with IP | admins | `/manage/activity` |
-| Airworthiness (Phase 15): the owner-declared maintenance programme, counters from the flight log, what's due when, the baseline | admins, technical managers | `/airworthiness`, `/airworthiness/OH-KML/…` |
+| Airworthiness (Phases 15–16): the owner-declared maintenance programme, counters from the flight log, what's due when, the baseline, work orders with CRS release, components, defects | admins, technical managers | `/airworthiness`, `/airworthiness/OH-KML/…` |
+| Report a defect (photo, a line) — the technical manager assesses it | pilots | `/defects`, `/defects/new` |
+| Pilot-owner maintenance (Part-ML Appendix II), released by a co-owner from the phone | co-owners with a licence no. | `/pilot-owner`, `/pilot-owner/new` |
 
 The process is reservation → flight log entry → invoice. There is no
 approval step (it existed in the MVP and was dropped in Phase 07 after trial
@@ -44,15 +46,38 @@ resets are done by an admin by hand), owner-tier permissions.
 ## Airworthiness
 
 Part-ML owner-declared maintenance programme for each tracked aircraft
-(`docs/MAINTENANCE_PLAN.md` is the programme, `docs/PHASE_15_PLAN.md` this
-phase). *Airworthiness → Overview* shows every aircraft; *Set up tracking*
-creates its profile. Per aircraft: **Dashboard** (state, counters, the due
-list), **Programme** (profile, tasks, CSV import), **Usage** (how the
-counters add up, adjustments, flights since the baseline), **Baseline**
-(the day-one "last done" for every task, released once).
+(`docs/MAINTENANCE_PLAN.md` is the programme; `docs/PHASE_15_PLAN.md` and
+`docs/PHASE_16_PLAN.md` the phases). *Airworthiness → Overview* shows every
+aircraft; *Set up tracking* creates its profile. Per aircraft:
+**Dashboard** (state, counters, open defects and work orders, the due
+list), **Programme** (profile, tasks, CSV import), **Work orders** (open →
+items → release with the CRS; frozen after), **Components** (serialised
+parts with TSN/TSO/CSN, installations), **Defects** (assess, defer, close;
+a defect work order rectifies), **Usage** (how the counters add up,
+adjustments, flights since the baseline), **Baseline** (the day-one "last
+done" for every task, released once).
 
 - **Who:** admins and *technical managers* (a checkbox on *Accounts*).
-  Pilots see nothing of it yet (the status chip on Home is M4).
+  Every pilot reports defects from the phone (`/defects/new`, linked from
+  the flight-saved banner and *More*); co-owners with a licence number on
+  their account release Appendix II work from `/pilot-owner/new`. The
+  status chip on Home and Book is M4.
+- **Work orders** are the only source of compliance after the baseline: an
+  item names the task done, the reference data, the parts used and any
+  component swap (removed / installed, with the readings at fitting); the
+  release records the readings, the shop, the CRS and a SHA-256 hash of the
+  order's substance. Released orders are frozen by the same trigger as the
+  baseline. Cirkus shows the hours it computes for the release date next
+  to the mechanic's reading and warns over 1.0 h difference — never blocks.
+- **Components** are club-level (part + serial); an installation binds one
+  to an aircraft for a period. Hours follow the aircraft while installed,
+  never below the fitting readings, and freeze at removal. A task that
+  *applies to* a component counts in the component's TSN/CSN and follows
+  the component fitted in its place on a swap. Parts already on the
+  aircraft are recorded on the Components page with "already fitted".
+- **Defects:** open and unassessed → *needs attention*; assessed as
+  affecting airworthiness → *grounded*; deferred (ML.A.403) with a date
+  and/or hours limit → attention, grounded past the limit.
 - **Counters** are never typed in: airframe hours = the profile's baseline
   + every flight after the baseline day (Tacho end − start on OH-KML) +
   adjustments; landings the same. Nothing stores "next due" — every page

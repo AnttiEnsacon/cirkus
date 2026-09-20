@@ -34,3 +34,12 @@ export function tomorrowYmd(): string {
 	const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
 	return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Helsinki' }).format(d);
 }
+
+/**
+ * Wait until the page has hydrated. A select or radio changed before Svelte
+ * takes over is reset to the bound state when it does; text inputs keep
+ * their value. Network idle is the signal SvelteKit gives us for free.
+ */
+export async function hydrated(page: Page) {
+	await page.waitForLoadState('networkidle');
+}

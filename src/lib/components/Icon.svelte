@@ -28,7 +28,9 @@
 		trash: '<path d="M5 7h14"/><path d="M9.5 7V4.8h5V7"/><path d="M7 7l.8 12.2h8.4L17 7"/><path d="M10.2 10.5v6"/><path d="M13.8 10.5v6"/>',
 		gauge: '<path d="M4 18a8.5 8.5 0 1 1 16 0"/><path d="M12 18l4.3-5.8"/><circle cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/>',
 		upload: '<path d="M12 16V4.5"/><path d="M7 9.5l5-5 5 5"/><path d="M4.5 19.5h15"/>',
-		download: '<path d="M12 4.5V16"/><path d="M7 11l5 5 5-5"/><path d="M4.5 19.5h15"/>'
+		download: '<path d="M12 4.5V16"/><path d="M7 11l5 5 5-5"/><path d="M4.5 19.5h15"/>',
+		flag: '<path d="M5.5 20.5v-16"/><path d="M5.5 4.5h12l-2.5 4 2.5 4h-12"/>',
+		box: '<path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/><path d="M4 8.5l8 4.5 8-4.5"/><path d="M12 13v7"/>'
 	};
 	let { name, size = 19 }: { name: string; size?: number } = $props();
 </script>

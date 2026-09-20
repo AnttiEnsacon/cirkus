@@ -70,6 +70,26 @@ export const load: PageServerLoad = async ({ locals }) => {
 		admin = { pendingAccounts: accounts.n, unbilled: Number(unbilled.amount).toFixed(2), expenses: Number(expenses.amount).toFixed(2) };
 	}
 
+	// Phase 16: open defects per aircraft, for every pilot; unassessed ones for the technical manager.
+	const defectRows = await db
+		.selectFrom('mx_defects as d')
+		.innerJoin('aircraft as a', 'a.id', 'd.aircraft_id')
+		.select(['a.tail_number', 'd.number', 'd.title', 'd.status', 'd.affects_airworthiness'])
+		.where('d.status', 'in', ['open', 'deferred'])
+		.orderBy('a.tail_number')
+		.orderBy('d.number', 'desc')
+		.execute();
+	const defectsByTail = new Map<string, { tail: string; open: number; grounded: boolean; unassessed: number; first: string }>();
+	for (const d of defectRows) {
+		const e = defectsByTail.get(d.tail_number) ?? { tail: d.tail_number, open: 0, grounded: false, unassessed: 0, first: `#${d.number} ${d.title}` };
+		e.open++;
+		if (d.affects_airworthiness === true) e.grounded = true;
+		if (d.affects_airworthiness === null) e.unassessed++;
+		defectsByTail.set(d.tail_number, e);
+	}
+	const defects = [...defectsByTail.values()];
+	const unassessed = me.role === 'admin' || me.technicalManager ? defects.reduce((n, d) => n + d.unassessed, 0) : 0;
+
 	const fmtRange = helsinkiRange;
 
 	return {
@@ -94,6 +114,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 					status: lastFlight.status
 				}
 			: null,
-		admin
+		admin,
+		defects,
+		unassessed
 	};
 };

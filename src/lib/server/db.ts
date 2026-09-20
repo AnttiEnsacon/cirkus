@@ -239,7 +239,8 @@ export type MxTaskSource = 'ica' | 'mip' | 'als' | 'ad' | 'sb' | 'owner';
 export type MxAnchorKind = 'last_compliance' | 'install' | 'manufacture' | 'fixed';
 export type MxResetRule = 'from_actual' | 'from_original';
 export type MxWorkOrderKind = 'setup_baseline' | 'scheduled' | 'unscheduled' | 'pilot_owner' | 'defect';
-export type MxWorkOrderStatus = 'open' | 'released';
+export type MxWorkOrderStatus = 'open' | 'released' | 'cancelled';
+export type MxDefectStatus = 'open' | 'deferred' | 'rectified' | 'closed';
 
 /** numeric(…) columns: strings out of pg, numbers or strings in. */
 type Numeric = ColumnType<string, number | string, number | string>;
@@ -291,6 +292,8 @@ export interface MxTasksTable {
 	interval_hours: NumericNullable;
 	interval_months: number | null;
 	interval_landings: number | null;
+	/** Phase 16: set when the task counts in a component's hours and landings. */
+	component_id: string | null;
 	one_time: Generated<boolean>;
 	anchor_kind: Generated<MxAnchorKind>;
 	anchor_date: ColumnType<string | null, string | null, string | null>;
@@ -325,8 +328,21 @@ export interface MxWorkOrdersTable {
 	release_hash: string | null;
 	released_by: string | null;
 	notes: string | null;
+	/** Phase 16 */
+	cancelled_at: ColumnType<string | null, string | null, string | null>;
+	cancelled_reason: string | null;
+	cancelled_by: string | null;
+	performed_by_ref: string | null;
 	created_at: ColumnType<Date, string | undefined, never>;
 	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+/** One part consumed on a work order item. */
+export interface MxPartUsed {
+	part_number: string;
+	serial_number: string | null;
+	quantity: number;
+	traceability: string | null;
 }
 
 export interface MxWorkOrderItemsTable {
@@ -339,6 +355,89 @@ export interface MxWorkOrderItemsTable {
 	done_hours: NumericNullable;
 	done_landings: number | null;
 	position: Generated<number>;
+	/** Phase 16: a component swap, the parts used, the defect rectified. */
+	removed_component_id: string | null;
+	installed_component_id: string | null;
+	installed_tsn: NumericNullable;
+	installed_tso: NumericNullable;
+	installed_csn: number | null;
+	position_label: string | null;
+	defect_id: string | null;
+	parts_used: ColumnType<MxPartUsed[], string | undefined, string>;
+}
+
+/* ---------- Phase 16: components and defects ---------- */
+
+export interface MxComponentsTable {
+	id: Generated<string>;
+	part_number: string;
+	serial_number: string;
+	description: string;
+	ata_chapter: string | null;
+	parent_component_id: string | null;
+	manufacture_date: ColumnType<string | null, string | null, string | null>;
+	traceability_ref: string | null;
+	notes: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface MxComponentInstallationsTable {
+	id: Generated<string>;
+	component_id: string;
+	aircraft_id: string;
+	position: string | null;
+	installed_on: DateString;
+	installed_at_hours: Numeric;
+	installed_at_landings: number;
+	tsn_at_install: NumericDefault;
+	tso_at_install: NumericDefault;
+	csn_at_install: Generated<number>;
+	removed_on: ColumnType<string | null, string | null, string | null>;
+	removed_at_hours: NumericNullable;
+	removed_at_landings: number | null;
+	removed_reason: string | null;
+	install_work_order_id: string | null;
+	remove_work_order_id: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+}
+
+export interface MxDefectsTable {
+	id: Generated<string>;
+	number: Generated<number>;
+	aircraft_id: string;
+	reported_by: string;
+	reported_at: ColumnType<Date, string | undefined, never>;
+	flight_log_id: string | null;
+	title: string;
+	description: string | null;
+	status: Generated<MxDefectStatus>;
+	affects_airworthiness: boolean | null;
+	assessed_by: string | null;
+	assessed_at: ColumnType<Date | null, string | null, string | null>;
+	assessment: string | null;
+	deferred_by: string | null;
+	deferred_on: ColumnType<string | null, string | null, string | null>;
+	deferral_basis: string | null;
+	deferral_limit_date: ColumnType<string | null, string | null, string | null>;
+	deferral_limit_hours: NumericNullable;
+	rectified_work_order_id: string | null;
+	rectified_on: ColumnType<string | null, string | null, string | null>;
+	closed_at: ColumnType<Date | null, string | null, string | null>;
+	closed_by: string | null;
+	closed_reason: string | null;
+	created_at: ColumnType<Date, string | undefined, never>;
+	updated_at: ColumnType<Date, string | undefined, string>;
+}
+
+export interface MxDefectImagesTable {
+	id: Generated<string>;
+	defect_id: string;
+	content_type: string;
+	bytes: Buffer;
+	width: number;
+	height: number;
+	created_at: ColumnType<Date, string | undefined, never>;
 }
 
 /** The view: items of released orders that name a task. Read-only. */
@@ -379,6 +478,10 @@ export interface Database {
 	mx_work_orders: MxWorkOrdersTable;
 	mx_work_order_items: MxWorkOrderItemsTable;
 	mx_task_compliance: MxTaskComplianceView;
+	mx_components: MxComponentsTable;
+	mx_component_installations: MxComponentInstallationsTable;
+	mx_defects: MxDefectsTable;
+	mx_defect_images: MxDefectImagesTable;
 }
 
 const pool = new Pool({

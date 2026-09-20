@@ -7,10 +7,13 @@
 		subtitle,
 		active,
 		back = { href: '/airworthiness', label: 'Airworthiness' }
-	}: { tail: string; subtitle: string; active: 'dashboard' | 'programme' | 'usage' | 'baseline'; back?: { href: string; label: string } } = $props();
+	}: { tail: string; subtitle: string; active: 'dashboard' | 'programme' | 'workorders' | 'components' | 'defects' | 'usage' | 'baseline'; back?: { href: string; label: string } } = $props();
 	const tabs = [
 		{ key: 'dashboard', path: '', label: 'Dashboard' },
 		{ key: 'programme', path: '/programme', label: 'Programme' },
+		{ key: 'workorders', path: '/work-orders', label: 'Work orders' },
+		{ key: 'components', path: '/components', label: 'Components' },
+		{ key: 'defects', path: '/defects', label: 'Defects' },
 		{ key: 'usage', path: '/usage', label: 'Usage' },
 		{ key: 'baseline', path: '/baseline', label: 'Baseline' }
 	];

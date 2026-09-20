@@ -2,7 +2,9 @@ import { error } from '@sveltejs/kit';
 import { db, type MxAircraftTable, type MxTasksTable } from '../db';
 import type { Selectable } from 'kysely';
 import { aircraftCounters, type AircraftCounters } from './counters';
-import { aircraftStatus, computeDue, resolveAnchor, type AircraftState, type Due, type DueTask, type Point, type Policy } from './due';
+import { componentAnchorPoint, toComponentPoint } from './components';
+import { aircraftStatus, computeDue, resolveAnchor, type AircraftState, type DefectForStatus, type Due, type DueTask, type Point, type Policy } from './due';
+import { loadComponents, type ComponentWithState } from './inventory';
 
 export type TaskRow = Selectable<MxTasksTable>;
 export type ProfileRow = Selectable<MxAircraftTable>;
@@ -54,9 +56,11 @@ export function toDueTask(t: TaskRow): DueTask {
 export interface ProgrammeItem {
 	task: TaskRow;
 	due: Due;
-	/** The most recent compliance, if any (what the pages show as "last done"). */
+	/** The most recent compliance, if any (what the pages show as "last done"); in the component's readings for a component task. */
 	lastDone: Point | null;
 	compliances: number;
+	/** Phase 16: the component a task belongs to, with today's readings. */
+	component: ComponentWithState | null;
 }
 
 export interface Programme {
@@ -64,6 +68,9 @@ export interface Programme {
 	items: ProgrammeItem[];
 	status: { state: AircraftState; reasons: string[] };
 	baselineReleased: boolean;
+	/** Phase 16: open and deferred defects, as the status saw them. */
+	defects: DefectForStatus[];
+	components: Map<string, ComponentWithState>;
 }
 
 const SEVERITY: Record<Due['status'], number> = { overdue: 0, in_tolerance: 1, due_soon: 2, undefined: 3, ok: 4, complete: 5 };
@@ -99,11 +106,45 @@ export async function loadProgramme(aircraftId: string, profile: ProfileRow, opt
 		.executeTakeFirst();
 	const baselineReleased = baseline?.status === 'released';
 
+	// Phase 16: components behind component tasks, and the open/deferred defects.
+	const componentIds = [...new Set(tasks.map((t) => t.component_id).filter((id): id is string => id !== null))];
+	const components = await loadComponents(componentIds, { id: aircraftId, hours: counters.hours, landings: counters.landings }, counters.today);
+	const defectRows = await db
+		.selectFrom('mx_defects')
+		.select(['number', 'title', 'status', 'affects_airworthiness', 'deferral_limit_date', 'deferral_limit_hours'])
+		.where('aircraft_id', '=', aircraftId)
+		.where('status', 'in', ['open', 'deferred'])
+		.orderBy('number', 'asc')
+		.execute();
+	const defects: DefectForStatus[] = defectRows.map((d) => ({
+		number: d.number,
+		title: d.title,
+		status: d.status as 'open' | 'deferred',
+		affects: d.affects_airworthiness,
+		limitDate: d.deferral_limit_date,
+		limitHours: d.deferral_limit_hours === null ? null : Number(d.deferral_limit_hours)
+	}));
+
 	const policy = policyOf(profile);
 	const items: ProgrammeItem[] = tasks.map((task) => {
-		const points = byTask.get(task.id) ?? [];
-		const anchor = resolveAnchor(toDueTask(task), points);
-		return { task, due: computeDue(toDueTask(task), anchor, counters, policy), lastDone: points.at(-1) ?? null, compliances: points.length };
+		const dueTask = toDueTask(task);
+		let points = byTask.get(task.id) ?? [];
+		let taskCounters = counters;
+		const component = task.component_id ? (components.get(task.component_id) ?? null) : null;
+		if (task.component_id) {
+			// A component task counts in the component's own hours and landings:
+			// compliance points are converted through the installation current on
+			// their date, the anchor for install/manufacture is the component's,
+			// and the counters are the component's readings today.
+			const here = component ? component.installations.filter((i) => i.aircraft_id === aircraftId) : [];
+			points = points.map((p) => toComponentPoint(here, p));
+			if (task.anchor_kind === 'install' || task.anchor_kind === 'manufacture') {
+				dueTask.fixed = component ? componentAnchorPoint(task.anchor_kind, component.current, component.component.manufacture_date) : null;
+			}
+			taskCounters = component ? { ...counters, hours: component.counters.tsn, landings: component.counters.csn } : { ...counters, hours: 0, landings: 0 };
+		}
+		const anchor = resolveAnchor(dueTask, points);
+		return { task, due: computeDue(dueTask, anchor, taskCounters, policy), lastDone: points.at(-1) ?? null, compliances: points.length, component };
 	});
 	items.sort((a, b) => {
 		if (a.task.active !== b.task.active) return a.task.active ? -1 : 1;
@@ -114,9 +155,9 @@ export async function loadProgramme(aircraftId: string, profile: ProfileRow, opt
 
 	const status = aircraftStatus(
 		items.filter((i) => i.task.active).map((i) => ({ code: i.task.code, due: i.due })),
-		{ baselineReleased, declaredAt: profile.amp_declared_at, reviewedAt: profile.amp_reviewed_at, today: counters.today }
+		{ baselineReleased, declaredAt: profile.amp_declared_at, reviewedAt: profile.amp_reviewed_at, today: counters.today, defects, hoursNow: counters.hours }
 	);
-	return { counters, items, status, baselineReleased };
+	return { counters, items, status, baselineReleased, defects, components };
 }
 
 /** The whole fleet for the overview: every aircraft, tracked or not. */

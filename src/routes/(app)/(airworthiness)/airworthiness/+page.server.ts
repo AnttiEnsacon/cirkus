@@ -28,7 +28,8 @@ export const load: PageServerLoad = async () => {
 					}
 				: null,
 			next: programme ? programme.items.filter((i) => i.due.status !== 'complete').slice(0, 5).map(dueRow) : [],
-			activeTasks: programme ? programme.items.length : 0
+			activeTasks: programme ? programme.items.length : 0,
+			defects: programme ? { open: programme.defects.length, unassessed: programme.defects.filter((d) => d.affects === null).length } : null
 		}))
 	};
 };

@@ -483,6 +483,10 @@ a.card:hover {
 	justify-content: center;
 	flex: 0 0 auto;
 }
+.list-icon.amber {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
 .list-icon.teal {
 	background: var(--teal-soft);
 	color: var(--teal);
