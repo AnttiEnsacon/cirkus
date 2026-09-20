@@ -38,6 +38,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      # Unit tests: the pure modules (Phase 15: the airworthiness due
+      # calculator). Fast, no database.
+      - run: npm run test:unit
       # `npm run lint` (prettier + eslint) is not enforced: the code base was
       # never Prettier-formatted, so it would fail on every file until a
       # one-off formatting commit is agreed on.

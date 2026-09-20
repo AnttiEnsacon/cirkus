@@ -12,7 +12,8 @@ const KINDS: Record<string, string[]> = {
 	billing: ['invoice.'],
 	expenses: ['expense.'],
 	accounts: ['user.'],
-	lists: ['aircraft.', 'flight_type.', 'expense_category.']
+	lists: ['aircraft.', 'flight_type.', 'expense_category.'],
+	airworthiness: ['airworthiness.']
 };
 
 /** Short names for refused attempts, where the details are usually empty. */
@@ -95,6 +96,31 @@ function describe(action: string, d: Record<string, unknown>, ok: boolean): stri
 			return `Updated an aircraft (€${s('member_rate_per_hour')}/h, ${s('billing_basis')} billing)`;
 		case 'aircraft.owners':
 			return `Changed co-owners`;
+		// Phase 15: airworthiness
+		case 'airworthiness.setup':
+			return `Started airworthiness tracking for ${s('tail')}`;
+		case 'airworthiness.profile_save':
+			return `Saved the ${s('tail')} programme profile (${s('hours_source')} hours, baseline ${s('baseline')}${s('declared') ? `, declared ${s('declared')}` : ''})`;
+		case 'airworthiness.tasks_import':
+			return `Imported tasks for ${s('tail')} from ${s('file')}: ${s('added')} added, ${s('updated')} updated`;
+		case 'airworthiness.task_add':
+			return `Added task ${s('code')} on ${s('tail')}`;
+		case 'airworthiness.task_save':
+			return `Edited task ${s('code')} on ${s('tail')}`;
+		case 'airworthiness.task_deactivate':
+			return `Deactivated a task on ${s('tail')}`;
+		case 'airworthiness.task_reactivate':
+			return `Reactivated a task on ${s('tail')}`;
+		case 'airworthiness.adjustment_add':
+			return `Adjusted ${s('tail')} counters on ${s('on_date')}: ${s('hours')} h, ${s('landings')} landings — ${s('reason')}`;
+		case 'airworthiness.adjustment_correct':
+			return `Corrected a ${s('tail')} adjustment: ${s('hours')} h, ${s('landings')} landings — ${s('reason')}`;
+		case 'airworthiness.adjustment_cancel':
+			return `Cancelled an adjustment on ${s('tail')}`;
+		case 'airworthiness.baseline_draft':
+			return `Saved the ${s('tail')} baseline draft (${s('rows')} rows, ${s('baseline_at')} at ${s('baseline_hours')} h / ${s('baseline_landings')} landings)`;
+		case 'airworthiness.baseline_release':
+			return `Released the ${s('tail')} baseline: ${s('baseline_at')} at ${s('baseline_hours')} h / ${s('baseline_landings')} landings, ${s('rows')} rows, hash ${s('hash')}`;
 		default: {
 			const [entity, verb] = action.split('.');
 			return `${verb ?? action} ${entity ?? ''}`.replace(/_/g, ' ').trim();

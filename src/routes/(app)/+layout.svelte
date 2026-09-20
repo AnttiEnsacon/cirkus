@@ -23,12 +23,16 @@
 		{ href: '/manage/accounts', label: 'Accounts', icon: 'users' },
 		{ href: '/manage/activity', label: 'Activity', icon: 'clock' }
 	];
+	// Phase 15: laptop-first pages for admins and technical managers; the
+	// phone tab bar and /more do not link to them on purpose.
+	const airworthinessNav = [{ href: '/airworthiness', label: 'Overview', icon: 'gauge' }];
 	const tabs = [...pilotNav.slice(0, 4), { href: '/more', label: 'More', icon: 'more' }];
 
 	const path = $derived(page.url.pathname);
 	const isActive = (href: string) => path === href || path.startsWith(href + '/');
-	const onAdminPage = $derived(path.startsWith('/manage'));
+	const onAdminPage = $derived(path.startsWith('/manage') || path.startsWith('/airworthiness'));
 	const moreActive = $derived(onAdminPage || path.startsWith('/invoices') || path.startsWith('/expenses') || path === '/more');
+	const showAirworthiness = $derived(data.user.role === 'admin' || data.user.technicalManager);
 	const initials = $derived(
 		data.user.name
 			.split(' ')
@@ -59,12 +63,20 @@
 					</a>
 				{/each}
 			{/if}
+			{#if showAirworthiness}
+				<p class="nav-label">Airworthiness</p>
+				{#each airworthinessNav as item (item.href)}
+					<a href={item.href} class="nav-item" class:active={isActive(item.href)}>
+						<Icon name={item.icon} size={18} />{item.label}
+					</a>
+				{/each}
+			{/if}
 		</nav>
 		<div class="foot">
 			<span class="avatar">{initials}</span>
 			<a class="who" href="/password" title="Change password">
 				<span class="name">{data.user.name}</span>
-				<span class="role">{data.user.role}</span>
+				<span class="role">{data.user.role === 'pilot' && data.user.technicalManager ? 'technical manager' : data.user.role}</span>
 			</a>
 			<form method="POST" action="/logout">
 				<button type="submit" class="iconbtn" title="Log out" aria-label="Log out"><Icon name="logout" size={18} /></button>

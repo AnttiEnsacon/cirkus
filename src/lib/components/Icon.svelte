@@ -25,7 +25,10 @@
 		euro: '<path d="M17.5 6.5a6.5 6.5 0 1 0 0 11"/><path d="M4.5 10.5h9"/><path d="M4.5 13.5h9"/>',
 		camera: '<path d="M4 8.5a1.8 1.8 0 0 1 1.8-1.8h2.4l1.3-2.2h5l1.3 2.2h2.4A1.8 1.8 0 0 1 20 8.5v9.2a1.8 1.8 0 0 1-1.8 1.8H5.8A1.8 1.8 0 0 1 4 17.7Z"/><circle cx="12" cy="13" r="3.3"/>',
 		wallet: '<path d="M4 7.5A1.5 1.5 0 0 1 5.5 6h12A1.5 1.5 0 0 1 19 7.5v10a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 17.5Z"/><path d="M15 6V4.6A1.1 1.1 0 0 0 13.7 3.5L5.2 5.3"/><path d="M15.5 12.5h3.5v3h-3.5a1.5 1.5 0 0 1 0-3Z"/>',
-		trash: '<path d="M5 7h14"/><path d="M9.5 7V4.8h5V7"/><path d="M7 7l.8 12.2h8.4L17 7"/><path d="M10.2 10.5v6"/><path d="M13.8 10.5v6"/>'
+		trash: '<path d="M5 7h14"/><path d="M9.5 7V4.8h5V7"/><path d="M7 7l.8 12.2h8.4L17 7"/><path d="M10.2 10.5v6"/><path d="M13.8 10.5v6"/>',
+		gauge: '<path d="M4 18a8.5 8.5 0 1 1 16 0"/><path d="M12 18l4.3-5.8"/><circle cx="12" cy="18" r="1.2" fill="currentColor" stroke="none"/>',
+		upload: '<path d="M12 16V4.5"/><path d="M7 9.5l5-5 5 5"/><path d="M4.5 19.5h15"/>',
+		download: '<path d="M12 4.5V16"/><path d="M7 11l5 5 5-5"/><path d="M4.5 19.5h15"/>'
 	};
 	let { name, size = 19 }: { name: string; size?: number } = $props();
 </script>

@@ -25,6 +25,7 @@ Reservation, logbook and billing system for **KML Aviation Oy** — one aircraft
 | Post a receipt (photo, total split by category) to be paid back | pilots | `/expenses` |
 | Pay back receipts by bank transfer, mark paid or reject | admins | `/manage/expenses`, `/manage/expense-categories` |
 | Activity log: every sign-in, sign-out and write, with IP | admins | `/manage/activity` |
+| Airworthiness (Phase 15): the owner-declared maintenance programme, counters from the flight log, what's due when, the baseline | admins, technical managers | `/airworthiness`, `/airworthiness/OH-KML/…` |
 
 The process is reservation → flight log entry → invoice. There is no
 approval step (it existed in the MVP and was dropped in Phase 07 after trial
@@ -39,6 +40,33 @@ Cirkus polls for *paid*. See *Procountor* below.
 Out of scope for this MVP, on purpose: third-party customers and the guest
 rate, scheduled/automatic invoicing, fuel credits, email (password
 resets are done by an admin by hand), owner-tier permissions.
+
+## Airworthiness
+
+Part-ML owner-declared maintenance programme for each tracked aircraft
+(`docs/MAINTENANCE_PLAN.md` is the programme, `docs/PHASE_15_PLAN.md` this
+phase). *Airworthiness → Overview* shows every aircraft; *Set up tracking*
+creates its profile. Per aircraft: **Dashboard** (state, counters, the due
+list), **Programme** (profile, tasks, CSV import), **Usage** (how the
+counters add up, adjustments, flights since the baseline), **Baseline**
+(the day-one "last done" for every task, released once).
+
+- **Who:** admins and *technical managers* (a checkbox on *Accounts*).
+  Pilots see nothing of it yet (the status chip on Home is M4).
+- **Counters** are never typed in: airframe hours = the profile's baseline
+  + every flight after the baseline day (Tacho end − start on OH-KML) +
+  adjustments; landings the same. Nothing stores "next due" — every page
+  computes it from the last release, the interval and today's counters
+  (`src/lib/server/airworthiness/due.ts`, unit-tested).
+- **The baseline** is a work order of kind `setup_baseline`. Once
+  released it cannot be changed: a Postgres trigger refuses every update,
+  insert and delete on a released order and its items (the first trigger
+  in the schema, on purpose — the promise to the ARC reviewer should not
+  depend on application code). Corrections are new records.
+- **Tolerances** never apply to airworthiness limitations (ALS) or ADs: a
+  check constraint on `mx_tasks` and the calculator both force zero.
+- **CSV import:** header row, columns named as the task fields (template
+  on the Programme page), all-or-nothing, existing codes updated.
 
 ## Time zones
 
@@ -55,15 +83,17 @@ $env:DATABASE_URL = (Get-Content .env | Select-String '^DATABASE_URL=').ToString
 node db/migrate.js               # applies db/migrations/*.sql not yet applied
 npm run dev                      # http://localhost:5173
 npm run check                    # type-check (CI runs this too)
+npm run test:unit                # Vitest: the pure modules (airworthiness due calculator, CSV, validators)
 ```
 
 ### End-to-end tests
 
-Five Playwright flows (book → edit → cancel; log → correct; invoice
-lifecycle through Procountor; expense → pay back / reject; activity log) in
+Six Playwright flows (book → edit → cancel; log → correct; invoice
+lifecycle through Procountor; expense → pay back / reject; activity log;
+airworthiness set-up → CSV import → baseline → counters) in
 `tests/e2e/`, run against the **built** app on a throwaway database. They
-wipe reservations, flights and invoices, and refuse to run against anything
-on `azure.com`. Procountor is a stand-in (`tests/e2e/fake-procountor.mjs`,
+wipe reservations, flights, invoices and the airworthiness tables, and
+refuse to run against anything on `azure.com`. Procountor is a stand-in (`tests/e2e/fake-procountor.mjs`,
 started by `playwright.config.ts` on port 3199) — the flows never touch the
 real API.
 
@@ -273,10 +303,12 @@ is on the Billing row, the flights stay billed, *Send* retries.
 ## Repo layout
 
 ```
-db/migrations/         numbered SQL, applied in order by db/migrate.js
+db/migrations/         numbered SQL, applied in order by db/migrate.js (0015: the mx_* airworthiness tables)
 db/set-password.js     break-glass password set
 src/lib/server/        db.ts (Kysely types), auth.ts, time.ts, invoicing.ts, procountor.ts
+src/lib/server/airworthiness/   due.ts (pure calculator + tests), counters.ts, programme.ts, tasks.ts, csv.ts, baseline.ts
 src/routes/            login, register, logout, healthz, internal/sync (hourly Procountor poll)
 src/routes/(app)/      everything behind login: home, book, log, logbook, invoices
 src/routes/(app)/(admin)/manage/   approvals, accounts, fleet, flights, invoices
+src/routes/(app)/(airworthiness)/airworthiness/   overview, [tail]/{dashboard, programme, usage, baseline}
 ```

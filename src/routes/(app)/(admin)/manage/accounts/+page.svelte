@@ -44,6 +44,7 @@
 					</div>
 					<div class="chiprow">
 						<span class="chip" class:on={person.role === 'admin'}>{person.role}</span>
+						{#if person.technical_manager}<span class="chip teal">technical manager</span>{/if}
 						<span class="status {person.status}">{person.status}</span>
 					</div>
 				</div>
@@ -66,6 +67,11 @@
 							<option value="pending" selected={person.status === 'pending'}>pending</option>
 							<option value="rejected" selected={person.status === 'rejected'}>rejected</option>
 						</select>
+					</label>
+					<label class="field"><span>Licence no.</span><input name="licence_no" class="mono" value={person.licence_no ?? ''} placeholder="FI.FCL.…" autocomplete="off" /></label>
+					<label class="field">
+						<span>Technical manager</span>
+						<span class="check"><input name="technical_manager" type="checkbox" checked={person.technical_manager} /> Edits the airworthiness programme</span>
 					</label>
 					<div class="field"><span>&nbsp;</span><button type="submit" class="btn btn-secondary sm">Save</button></div>
 				</form>
@@ -137,5 +143,17 @@
 	}
 	.matches .list-item {
 		margin: 0;
+	}
+	.check {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 44px;
+		font-size: 13.5px;
+		color: var(--ink-soft);
+	}
+	.check input {
+		width: 18px;
+		height: 18px;
 	}
 </style>

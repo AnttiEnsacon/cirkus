@@ -10,7 +10,8 @@
 		billing: 'Billing',
 		expenses: 'Expenses',
 		accounts: 'Accounts',
-		lists: 'Fleet & lists'
+		lists: 'Fleet & lists',
+		airworthiness: 'Airworthiness'
 	};
 	const q = (over: Record<string, string | number>) => {
 		const p = new URLSearchParams();

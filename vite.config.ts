@@ -1,6 +1,6 @@
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [
@@ -11,5 +11,12 @@ export default defineConfig({
 			},
 			adapter: adapter()
 		})
-	]
+	],
+	// Unit tests (Vitest) cover pure modules only — the airworthiness due
+	// calculator in Phase 15. Anything that touches the database or a page
+	// is covered by the Playwright flows instead.
+	test: {
+		include: ['src/**/*.test.ts'],
+		environment: 'node'
+	}
 });
